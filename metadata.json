@@ -1,0 +1,6 @@
+{
+  "name": "Ferretería",
+  "description": "Gestión completa para ferretería: inventario de productos, ventas, mermas, historial y estadísticas en tiempo real con persistencia local.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

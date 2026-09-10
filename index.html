@@ -1,0 +1,1968 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#B85D3B" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Ferretería - Sistema de Gestión</title>
+  <style>
+    :root {
+      --primary: #B85D3B;
+      --primary-dark: #8F3E22;
+      --primary-light: #FBECE5;
+      --primary-container: #FFDBCF;
+      --on-primary-container: #380D00;
+      --secondary: #77574E;
+      --secondary-container: #FFDBCF;
+      --surface: #FCFAF8;
+      --surface-variant: #F5DED8;
+      --background: #FFF8F6;
+      --on-background: #231917;
+      --on-surface: #231917;
+      --outline: #85736E;
+      --outline-variant: #D8C2BC;
+      --card-bg: #FFFFFF;
+      --danger: #BA1A1A;
+      --danger-container: #FFDAD6;
+      --success: #2E7D32;
+      --success-container: #E8F5E9;
+      --warning: #ED6C02;
+      --warning-container: #FFF4E5;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background-color: var(--background);
+      color: var(--on-background);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* Container for mobile simulation or full screen */
+    #app {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: 680px;
+      height: 100%;
+      margin: 0 auto;
+      background: var(--background);
+      position: relative;
+      box-shadow: 0 0 40px rgba(0,0,0,0.05);
+    }
+
+    /* Header */
+    header {
+      background: var(--primary);
+      color: #FFF;
+      padding: env(safe-area-inset-top, 12px) 16px 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-md);
+      z-index: 10;
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-icon {
+      background: rgba(255,255,255,0.2);
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .header-title h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+    }
+
+    .header-title span {
+      font-size: 0.72rem;
+      opacity: 0.85;
+      display: block;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: white;
+      border-radius: 50%;
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background 0.2s;
+    }
+    .icon-btn:active {
+      background: rgba(255,255,255,0.3);
+    }
+
+    /* Main Content Area */
+    main {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 14px 14px 90px 14px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Bottom Navigation Bar */
+    nav.bottom-nav {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--card-bg);
+      border-top: 1px solid var(--outline-variant);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 8px 4px calc(env(safe-area-inset-bottom, 8px) + 6px) 4px;
+      z-index: 20;
+      box-shadow: 0 -3px 12px rgba(0,0,0,0.05);
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      background: none;
+      border: none;
+      color: var(--outline);
+      cursor: pointer;
+      font-size: 0.7rem;
+      font-weight: 600;
+      flex: 1;
+      padding: 4px 0;
+      transition: color 0.15s, transform 0.1s;
+    }
+
+    .nav-item .nav-icon {
+      font-size: 1.25rem;
+      padding: 3px 14px;
+      border-radius: 14px;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .nav-item.active {
+      color: var(--primary);
+    }
+
+    .nav-item.active .nav-icon {
+      background: var(--primary-container);
+      color: var(--on-primary-container);
+    }
+
+    /* Cards & Components */
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid rgba(0,0,0,0.04);
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--on-surface);
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid rgba(0,0,0,0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label {
+      font-size: 0.72rem;
+      color: var(--outline);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .stat-value {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    .stat-sub {
+      font-size: 0.7rem;
+      color: #666;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 18px;
+      border-radius: var(--radius-md);
+      font-size: 0.88rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn:active {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .btn-danger {
+      background: var(--danger-container);
+      color: var(--danger);
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      border-radius: 8px;
+    }
+
+    .btn-block {
+      width: 100%;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+    .badge-danger {
+      background: var(--danger-container);
+      color: var(--danger);
+    }
+    .badge-success {
+      background: var(--success-container);
+      color: var(--success);
+    }
+    .badge-neutral {
+      background: var(--surface-variant);
+      color: var(--on-surface);
+    }
+    .badge-warning {
+      background: var(--warning-container);
+      color: var(--warning);
+    }
+
+    /* Search & Filters */
+    .search-box {
+      position: relative;
+      margin-bottom: 12px;
+    }
+    .search-box input {
+      width: 100%;
+      padding: 12px 14px 12px 42px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--outline-variant);
+      background: #FFF;
+      font-size: 0.9rem;
+      outline: none;
+      font-family: inherit;
+    }
+    .search-box input:focus {
+      border-color: var(--primary);
+    }
+    .search-box .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 16px;
+      color: var(--outline);
+    }
+
+    .category-scroll {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      scrollbar-width: none;
+    }
+    .category-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .chip {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      white-space: nowrap;
+      background: #FFF;
+      border: 1px solid var(--outline-variant);
+      color: var(--outline);
+      cursor: pointer;
+    }
+    .chip.active {
+      background: var(--primary);
+      color: #FFF;
+      border-color: var(--primary);
+    }
+
+    /* List Items */
+    .item-card {
+      background: #FFF;
+      border-radius: var(--radius-md);
+      padding: 14px;
+      margin-bottom: 10px;
+      border: 1px solid rgba(0,0,0,0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.15s;
+    }
+
+    .item-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .item-name {
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: var(--on-surface);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-meta {
+      font-size: 0.75rem;
+      color: var(--outline);
+      margin-top: 3px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .item-right {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+      margin-left: 12px;
+    }
+
+    .item-price {
+      font-weight: 800;
+      font-size: 1rem;
+      color: var(--primary);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--outline);
+    }
+    .empty-state-icon {
+      font-size: 44px;
+      margin-bottom: 10px;
+    }
+
+    /* Canvas Charts */
+    .chart-container {
+      width: 100%;
+      height: 180px;
+      position: relative;
+      margin-top: 6px;
+    }
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+    }
+
+    /* Modals & Dialogs */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-sheet {
+      background: #FFF;
+      width: 100%;
+      max-width: 680px;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      padding: 20px 20px calc(env(safe-area-inset-bottom, 16px) + 20px) 20px;
+      max-height: 88vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-lg);
+      animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .modal-title {
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--outline);
+      margin-bottom: 6px;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--outline-variant);
+      font-size: 0.9rem;
+      font-family: inherit;
+      outline: none;
+      background: #FFF;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: var(--primary);
+    }
+
+    .preview-box {
+      background: var(--primary-light);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      font-size: 0.82rem;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .banner-alert {
+      background: var(--danger-container);
+      color: var(--danger);
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      font-size: 0.82rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    /* Audit table */
+    .audit-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+    .audit-table th {
+      text-align: left;
+      padding: 8px 4px;
+      color: var(--outline);
+      border-bottom: 1px solid var(--outline-variant);
+    }
+    .audit-table td {
+      padding: 8px 4px;
+      border-bottom: 1px solid #EEE;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header>
+      <div class="header-brand">
+        <div class="header-icon">🔨</div>
+        <div class="header-title">
+          <h1>Ferretería</h1>
+          <span id="role-tag">Punto de Venta & Inventario</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" onclick="openModal('modal-quick-action')" title="Acciones Rápidas">⚡</button>
+        <button class="icon-btn" onclick="switchTab('settings')" title="Ajustes">⚙️</button>
+      </div>
+    </header>
+
+    <!-- Main Views -->
+    <main id="main-content">
+      <!-- TAB 1: INICIO (DASHBOARD) -->
+      <section id="tab-dashboard" class="tab-pane">
+        <div id="low-stock-banner" class="banner-alert" style="display: none;">
+          ⚠️ <span>Existen productos con stock crítico (≤ 5 unidades).</span>
+        </div>
+
+        <div class="grid-2">
+          <div class="stat-card">
+            <span class="stat-label">Ventas (30d)</span>
+            <span class="stat-value" id="dash-sales-total">$0.00</span>
+            <span class="stat-sub" id="dash-sales-count">0 transacciones</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Ganancia Neta</span>
+            <span class="stat-value" style="color: var(--success);" id="dash-profit-total">$0.00</span>
+            <span class="stat-sub" id="dash-margin-rate">Margen: 0%</span>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="stat-card">
+            <span class="stat-label">Mermas (30d)</span>
+            <span class="stat-value" style="color: var(--danger);" id="dash-mermas-total">$0.00</span>
+            <span class="stat-sub" id="dash-mermas-count">0 incidentes</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Stock Valorizado</span>
+            <span class="stat-value" style="color: var(--secondary);" id="dash-stock-value">$0.00</span>
+            <span class="stat-sub" id="dash-products-count">0 productos</span>
+          </div>
+        </div>
+
+        <!-- Chart 7 days -->
+        <div class="card">
+          <div class="card-title">
+            <span>📈 Ventas últimos 7 días</span>
+            <span class="badge badge-neutral">Semanal</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="canvas-weekly-sales"></canvas>
+          </div>
+        </div>
+
+        <!-- Quick actions buttons -->
+        <div class="grid-3">
+          <button class="btn btn-primary btn-sm" onclick="openSaleModal()">+ Venta</button>
+          <button class="btn btn-secondary btn-sm" onclick="openProductModal()">+ Producto</button>
+          <button class="btn btn-danger btn-sm" onclick="openMermaModal()">+ Merma</button>
+        </div>
+
+        <!-- Recent sales -->
+        <div class="card">
+          <div class="card-title">
+            <span>🕒 Últimas Ventas de Hoy</span>
+            <button class="btn btn-sm btn-secondary" onclick="switchTab('sales')">Ver todas</button>
+          </div>
+          <div id="dash-recent-sales"></div>
+        </div>
+      </section>
+
+      <!-- TAB 2: PRODUCTOS -->
+      <section id="tab-products" class="tab-pane" style="display: none;">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="prod-search" placeholder="Buscar por nombre, código o categoría..." oninput="renderProducts()" />
+        </div>
+
+        <div class="category-scroll" id="prod-categories">
+          <div class="chip active" onclick="setCategoryFilter('TODAS')">Todas</div>
+          <div class="chip" onclick="setCategoryFilter('Herramientas')">Herramientas</div>
+          <div class="chip" onclick="setCategoryFilter('Pinturas')">Pinturas</div>
+          <div class="chip" onclick="setCategoryFilter('Ferretería')">Ferretería</div>
+          <div class="chip" onclick="setCategoryFilter('Electricidad')">Electricidad</div>
+          <div class="chip" onclick="setCategoryFilter('Plomería')">Plomería</div>
+          <div class="chip" onclick="setCategoryFilter('Otros')">Otros</div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <span id="prod-counter" style="font-size: 0.8rem; color: var(--outline); font-weight: 600;">0 productos</span>
+          <button class="btn btn-primary btn-sm" onclick="openProductModal()">+ Nuevo Producto</button>
+        </div>
+
+        <div id="products-list"></div>
+      </section>
+
+      <!-- TAB 3: VENTAS -->
+      <section id="tab-sales" class="tab-pane" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <div>
+            <h2 style="font-size: 1.1rem; font-weight: 700;">Registro de Ventas</h2>
+            <span style="font-size: 0.75rem; color: var(--outline);">Transacciones y cobros</span>
+          </div>
+          <button class="btn btn-primary" onclick="openSaleModal()">+ Registrar Venta</button>
+        </div>
+
+        <div id="sales-list"></div>
+      </section>
+
+      <!-- TAB 4: MERMAS -->
+      <section id="tab-mermas" class="tab-pane" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <div>
+            <h2 style="font-size: 1.1rem; font-weight: 700;">Control de Mermas</h2>
+            <span style="font-size: 0.75rem; color: var(--outline);">Pérdidas, robos o roturas</span>
+          </div>
+          <button class="btn btn-danger" onclick="openMermaModal()">+ Registrar Merma</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Causas Principales de Pérdida</div>
+          <div class="chart-container" style="height: 160px;">
+            <canvas id="canvas-mermas-chart"></canvas>
+          </div>
+        </div>
+
+        <div id="mermas-list"></div>
+      </section>
+
+      <!-- TAB 5: INFORMES -->
+      <section id="tab-reports" class="tab-pane" style="display: none;">
+        <div class="card-title">
+          <span>📊 Reportes y Rentabilidad</span>
+          <select id="report-period" onchange="renderReports()" style="padding: 4px 8px; border-radius: 6px; font-size: 0.8rem;">
+            <option value="today">Hoy</option>
+            <option value="7days">Últimos 7 días</option>
+            <option value="30days" selected>Últimos 30 días</option>
+            <option value="year">Este Año</option>
+            <option value="all">Histórico Completo</option>
+          </select>
+        </div>
+
+        <div class="grid-2">
+          <div class="stat-card">
+            <span class="stat-label">Ingresos Totales</span>
+            <span class="stat-value" id="rep-income">$0.00</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Utilidad Bruta</span>
+            <span class="stat-value" style="color: var(--success);" id="rep-gross-profit">$0.00</span>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="stat-card">
+            <span class="stat-label">Total en Mermas</span>
+            <span class="stat-value" style="color: var(--danger);" id="rep-mermas">$0.00</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Utilidad Neta Real</span>
+            <span class="stat-value" style="color: var(--primary);" id="rep-net-profit">$0.00</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🏆 Top Productos Más Vendidos</div>
+          <div id="rep-top-products"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📋 Bitácora de Movimientos (Auditoría)</div>
+          <div style="max-height: 220px; overflow-y: auto;">
+            <table class="audit-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Tipo</th>
+                  <th>Detalle</th>
+                  <th>Cant.</th>
+                </tr>
+              </thead>
+              <tbody id="rep-audit-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 6: AJUSTES / LICENCIA -->
+      <section id="tab-settings" class="tab-pane" style="display: none;">
+        <div class="card">
+          <div class="card-title">🔑 Licencia y Dispositivo</div>
+          <div class="form-group">
+            <label>ID de Dispositivo:</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="device-id-field" readonly />
+              <button class="btn btn-secondary btn-sm" onclick="copyDeviceId()">Copiar</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Clave de Activación:</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="license-key-input" placeholder="XXXX-XXXX-XXXX" />
+              <button class="btn btn-primary btn-sm" onclick="activateLicense()">Activar</button>
+            </div>
+          </div>
+          <div id="license-status-badge" class="badge badge-success">Licencia Activa (Ilimitada)</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">💾 Respaldo y Datos</div>
+          <p style="font-size: 0.8rem; color: var(--outline); margin-bottom: 12px;">
+            Exporta tus datos en formato JSON para no perder tu inventario y registros o restáuralos en cualquier dispositivo.
+          </p>
+          <div class="grid-2">
+            <button class="btn btn-secondary btn-sm" onclick="exportBackup()">📥 Descargar Backup</button>
+            <button class="btn btn-secondary btn-sm" onclick="triggerImportBackup()">📤 Restaurar Backup</button>
+            <input type="file" id="backup-file-input" style="display:none" onchange="importBackup(event)" accept=".json" />
+          </div>
+          <div style="margin-top: 14px;">
+            <button class="btn btn-danger btn-sm btn-block" onclick="resetDemoData()">🔄 Restaurar Datos de Demostración</button>
+          </div>
+        </div>
+
+        <div class="card" style="text-align: center; color: var(--outline); font-size: 0.75rem;">
+          <p><strong>Ferretería App v1.0.0</strong></p>
+          <p>Compilación Standalone HTML5 / PWA / Android WebView</p>
+          <p>Almacenamiento Local 100% Offline (SQLite / LocalStorage)</p>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" onclick="switchTab('dashboard')">
+        <span class="nav-icon">📊</span>
+        <span>Inicio</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('products')">
+        <span class="nav-icon">📦</span>
+        <span>Productos</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('sales')">
+        <span class="nav-icon">💰</span>
+        <span>Ventas</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('mermas')">
+        <span class="nav-icon">📉</span>
+        <span>Mermas</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('reports')">
+        <span class="nav-icon">📑</span>
+        <span>Informes</span>
+      </button>
+    </nav>
+
+    <!-- MODAL: PRODUCTO (NUEVO / EDITAR) -->
+    <div id="modal-product" class="modal-backdrop">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h3 class="modal-title" id="modal-product-title">Nuevo Producto</h3>
+          <button class="icon-btn" style="color: #333; background: #EEE;" onclick="closeModal('modal-product')">✕</button>
+        </div>
+        <form id="form-product" onsubmit="saveProduct(event)">
+          <input type="hidden" id="prod-id" />
+          <div class="form-group">
+            <label>Nombre del Producto *</label>
+            <input type="text" id="prod-name" required placeholder="Ej: Martillo de uña 16oz" />
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Categoría</label>
+              <select id="prod-category">
+                <option value="Herramientas">Herramientas</option>
+                <option value="Pinturas">Pinturas</option>
+                <option value="Ferretería">Ferretería</option>
+                <option value="Electricidad">Electricidad</option>
+                <option value="Plomería">Plomería</option>
+                <option value="Otros">Otros</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Unidad de Medida</label>
+              <select id="prod-unit">
+                <option value="Unidades">Unidades</option>
+                <option value="Metros">Metros</option>
+                <option value="Kilos">Kilos</option>
+                <option value="Litros">Litros</option>
+                <option value="Bolsas">Bolsas</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid-3">
+            <div class="form-group">
+              <label>Stock Actual *</label>
+              <input type="number" step="any" id="prod-stock" required min="0" value="10" />
+            </div>
+            <div class="form-group">
+              <label>Costo Unit. ($) *</label>
+              <input type="number" step="0.01" id="prod-cost" required min="0" value="0.00" oninput="updateMarginPreview()" />
+            </div>
+            <div class="form-group">
+              <label>Precio Venta ($) *</label>
+              <input type="number" step="0.01" id="prod-price" required min="0" value="0.00" oninput="updateMarginPreview()" />
+            </div>
+          </div>
+          <div class="preview-box">
+            <span>Margen estimado:</span>
+            <strong id="prod-margin-preview">0.0% ($0.00 ganancia)</strong>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Guardar Producto</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: AJUSTAR STOCK -->
+    <div id="modal-stock-adjust" class="modal-backdrop">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h3 class="modal-title">Ajuste de Stock</h3>
+          <button class="icon-btn" style="color: #333; background: #EEE;" onclick="closeModal('modal-stock-adjust')">✕</button>
+        </div>
+        <form onsubmit="applyStockAdjustment(event)">
+          <input type="hidden" id="adj-product-id" />
+          <p id="adj-product-name" style="font-weight: 700; margin-bottom: 8px;"></p>
+          <p id="adj-current-stock" style="font-size: 0.85rem; color: var(--outline); margin-bottom: 14px;"></p>
+          <div class="form-group">
+            <label>Nuevo Stock Real:</label>
+            <input type="number" step="any" id="adj-new-stock" required min="0" />
+          </div>
+          <div class="form-group">
+            <label>Motivo del ajuste:</label>
+            <input type="text" id="adj-reason" placeholder="Ej: Conteo físico de inventario" required />
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Aplicar Ajuste</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: REGISTRAR VENTA -->
+    <div id="modal-sale" class="modal-backdrop">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h3 class="modal-title">Registrar Venta</h3>
+          <button class="icon-btn" style="color: #333; background: #EEE;" onclick="closeModal('modal-sale')">✕</button>
+        </div>
+        <form onsubmit="processSale(event)">
+          <div class="form-group">
+            <label>Seleccionar Producto *</label>
+            <select id="sale-product-select" required onchange="onSaleProductChange()">
+              <option value="">-- Seleccionar --</option>
+            </select>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Cantidad *</label>
+              <input type="number" step="any" id="sale-qty" required min="0.01" value="1" oninput="calculateSaleTotals()" />
+            </div>
+            <div class="form-group">
+              <label>Precio Unitario ($) *</label>
+              <input type="number" step="0.01" id="sale-unit-price" required min="0" oninput="calculateSaleTotals()" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Nombre del Cliente (Opcional)</label>
+            <input type="text" id="sale-customer" placeholder="Cliente mostrador" />
+          </div>
+          <div class="preview-box">
+            <div>Total Venta: <strong id="sale-total-preview" style="font-size: 1.1rem; color: var(--primary);">$0.00</strong></div>
+            <div>Ganancia est.: <strong id="sale-profit-preview" style="color: var(--success);">$0.00</strong></div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Confirmar y Cobrar</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: REGISTRAR MERMA -->
+    <div id="modal-merma" class="modal-backdrop">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h3 class="modal-title">Registrar Merma / Pérdida</h3>
+          <button class="icon-btn" style="color: #333; background: #EEE;" onclick="closeModal('modal-merma')">✕</button>
+        </div>
+        <form onsubmit="processMerma(event)">
+          <div class="form-group">
+            <label>Producto *</label>
+            <select id="merma-product-select" required onchange="onMermaProductChange()">
+              <option value="">-- Seleccionar --</option>
+            </select>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Cantidad Perdida *</label>
+              <input type="number" step="any" id="merma-qty" required min="0.01" value="1" oninput="calculateMermaTotals()" />
+            </div>
+            <div class="form-group">
+              <label>Motivo *</label>
+              <select id="merma-reason" required>
+                <option value="Daño">Daño / Rotura</option>
+                <option value="Robo">Robo / Extravío</option>
+                <option value="Caducidad">Caducidad / Deterioro</option>
+                <option value="Devolución">Devolución defectuosa</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+          </div>
+          <div class="preview-box">
+            <span>Pérdida estimada (al costo):</span>
+            <strong id="merma-loss-preview" style="color: var(--danger);">$0.00</strong>
+          </div>
+          <button type="submit" class="btn btn-danger btn-block">Registrar Pérdida</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: ACCIONES RÁPIDAS -->
+    <div id="modal-quick-action" class="modal-backdrop">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h3 class="modal-title">Acceso Rápido</h3>
+          <button class="icon-btn" style="color: #333; background: #EEE;" onclick="closeModal('modal-quick-action')">✕</button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button class="btn btn-primary" onclick="closeModal('modal-quick-action'); openSaleModal();">💰 Nueva Venta</button>
+          <button class="btn btn-secondary" onclick="closeModal('modal-quick-action'); openProductModal();">📦 Nuevo Producto</button>
+          <button class="btn btn-danger" onclick="closeModal('modal-quick-action'); openMermaModal();">📉 Registrar Merma</button>
+          <button class="btn btn-secondary" onclick="closeModal('modal-quick-action'); switchTab('reports');">📑 Ver Reporte de Rentabilidad</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       DATA MODEL & LOCAL STORAGE ENGINE
+       ========================================================================== */
+    const STORAGE_PREFIX = 'ferreteria_';
+
+    const INITIAL_PRODUCTS = [
+      { id: 'prod_1', name: 'Martillo de Uña 16oz', category: 'Herramientas', unit: 'Unidades', stock: 12, costPrice: 8.50, sellPrice: 15.00, minStock: 3 },
+      { id: 'prod_2', name: 'Pintura Látex Blanca 4L', category: 'Pinturas', unit: 'Unidades', stock: 8, costPrice: 16.00, sellPrice: 28.00, minStock: 2 },
+      { id: 'prod_3', name: 'Caja Tornillos Drywall 100u', category: 'Ferretería', unit: 'Unidades', stock: 25, costPrice: 2.20, sellPrice: 4.50, minStock: 5 },
+      { id: 'prod_4', name: 'Cable Eléctrico Unipolar 2.5mm', category: 'Electricidad', unit: 'Metros', stock: 150, costPrice: 0.45, sellPrice: 0.90, minStock: 20 },
+      { id: 'prod_5', name: 'Llave Stilson 14 Pulgadas', category: 'Herramientas', unit: 'Unidades', stock: 4, costPrice: 12.00, sellPrice: 22.50, minStock: 2 },
+      { id: 'prod_6', name: 'Codo PVC 1/2 Presión', category: 'Plomería', unit: 'Unidades', stock: 45, costPrice: 0.30, sellPrice: 0.85, minStock: 10 },
+      { id: 'prod_7', name: 'Cinta Aisladora 20m Negra', category: 'Electricidad', unit: 'Unidades', stock: 3, costPrice: 0.80, sellPrice: 2.00, minStock: 5 },
+      { id: 'prod_8', name: 'Brocha de Pintar 2.5 Pulgadas', category: 'Pinturas', unit: 'Unidades', stock: 18, costPrice: 1.50, sellPrice: 3.50, minStock: 4 }
+    ];
+
+    let state = {
+      products: [],
+      sales: [],
+      mermas: [],
+      movements: [],
+      activeCategory: 'TODAS',
+      deviceId: ''
+    };
+
+    function loadData() {
+      const p = localStorage.getItem(STORAGE_PREFIX + 'products');
+      if (!p) {
+        state.products = [...INITIAL_PRODUCTS];
+        seedInitialHistory();
+        saveData();
+      } else {
+        try {
+          state.products = JSON.parse(p) || [];
+          state.sales = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'sales')) || [];
+          state.mermas = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'mermas')) || [];
+          state.movements = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'movements')) || [];
+        } catch (e) {
+          state.products = [...INITIAL_PRODUCTS];
+          saveData();
+        }
+      }
+
+      // Device ID setup
+      let devId = localStorage.getItem(STORAGE_PREFIX + 'device_id');
+      if (!devId) {
+        devId = 'FERR-' + Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
+        localStorage.setItem(STORAGE_PREFIX + 'device_id', devId);
+      }
+      state.deviceId = devId;
+      document.getElementById('device-id-field').value = devId;
+    }
+
+    function saveData() {
+      localStorage.setItem(STORAGE_PREFIX + 'products', JSON.stringify(state.products));
+      localStorage.setItem(STORAGE_PREFIX + 'sales', JSON.stringify(state.sales));
+      localStorage.setItem(STORAGE_PREFIX + 'mermas', JSON.stringify(state.mermas));
+      localStorage.setItem(STORAGE_PREFIX + 'movements', JSON.stringify(state.movements));
+    }
+
+    function seedInitialHistory() {
+      const now = Date.now();
+      const dayMs = 86400000;
+      state.sales = [
+        { id: 'sale_1', productId: 'prod_1', productName: 'Martillo de Uña 16oz', quantity: 1, unitPrice: 15.00, totalAmount: 15.00, unitCost: 8.50, profit: 6.50, customerName: 'Juan Pérez', timestamp: now - dayMs * 0.1 },
+        { id: 'sale_2', productId: 'prod_3', productName: 'Caja Tornillos Drywall 100u', quantity: 3, unitPrice: 4.50, totalAmount: 13.50, unitCost: 2.20, profit: 6.90, customerName: 'Constructora Alfa', timestamp: now - dayMs * 1.2 },
+        { id: 'sale_3', productId: 'prod_2', productName: 'Pintura Látex Blanca 4L', quantity: 2, unitPrice: 28.00, totalAmount: 56.00, unitCost: 16.00, profit: 24.00, customerName: 'Ana Morales', timestamp: now - dayMs * 2.5 },
+        { id: 'sale_4', productId: 'prod_4', productName: 'Cable Eléctrico Unipolar 2.5mm', quantity: 20, unitPrice: 0.90, totalAmount: 18.00, unitCost: 0.45, profit: 9.00, customerName: 'Electricista Roberto', timestamp: now - dayMs * 4 }
+      ];
+      state.mermas = [
+        { id: 'merma_1', productId: 'prod_2', productName: 'Pintura Látex Blanca 4L', quantity: 1, reason: 'Daño', costPerUnit: 16.00, totalCost: 16.00, timestamp: now - dayMs * 3 }
+      ];
+      state.movements = [
+        { id: 'mov_1', productId: 'prod_1', productName: 'Martillo de Uña 16oz', type: 'VENTA', quantity: 1, stockAfter: 12, reason: 'Venta #sale_1', timestamp: now - dayMs * 0.1 },
+        { id: 'mov_2', productId: 'prod_2', productName: 'Pintura Látex Blanca 4L', type: 'MERMA', quantity: 1, stockAfter: 8, reason: 'Daño en transporte', timestamp: now - dayMs * 3 }
+      ];
+    }
+
+    function addMovement(productId, productName, type, quantity, stockAfter, reason) {
+      state.movements.unshift({
+        id: 'mov_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        productId,
+        productName,
+        type,
+        quantity,
+        stockAfter,
+        reason,
+        timestamp: Date.now()
+      });
+      if (state.movements.length > 500) state.movements.pop();
+    }
+
+    /* ==========================================================================
+       TAB ROUTING & UI RENDERERS
+       ========================================================================== */
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+      const target = document.getElementById('tab-' + tabId);
+      if (target) {
+        target.style.display = 'block';
+      }
+
+      const navButtons = document.querySelectorAll('.nav-item');
+      const tabMap = { 'dashboard': 0, 'products': 1, 'sales': 2, 'mermas': 3, 'reports': 4 };
+      if (tabMap[tabId] !== undefined && navButtons[tabMap[tabId]]) {
+        navButtons[tabMap[tabId]].classList.add('active');
+      }
+
+      if (tabId === 'dashboard') renderDashboard();
+      if (tabId === 'products') renderProducts();
+      if (tabId === 'sales') renderSales();
+      if (tabId === 'mermas') renderMermas();
+      if (tabId === 'reports') renderReports();
+    }
+
+    /* ==========================================================================
+       DASHBOARD LOGIC
+       ========================================================================== */
+    function renderDashboard() {
+      const now = Date.now();
+      const monthAgo = now - 30 * 86400000;
+
+      // Filter last 30 days
+      const sales30d = state.sales.filter(s => s.timestamp >= monthAgo);
+      const totalSales = sales30d.reduce((sum, s) => sum + s.totalAmount, 0);
+      const totalProfit = sales30d.reduce((sum, s) => sum + s.profit, 0);
+
+      const mermas30d = state.mermas.filter(m => m.timestamp >= monthAgo);
+      const totalMermas = mermas30d.reduce((sum, m) => sum + m.totalCost, 0);
+
+      const totalStockVal = state.products.reduce((sum, p) => sum + (p.stock * p.costPrice), 0);
+
+      document.getElementById('dash-sales-total').innerText = '$' + totalSales.toFixed(2);
+      document.getElementById('dash-sales-count').innerText = sales30d.length + ' ventas';
+
+      document.getElementById('dash-profit-total').innerText = '$' + (totalProfit - totalMermas).toFixed(2);
+      const margin = totalSales > 0 ? ((totalProfit - totalMermas) / totalSales * 100).toFixed(1) : 0;
+      document.getElementById('dash-margin-rate').innerText = 'Margen neto: ' + margin + '%';
+
+      document.getElementById('dash-mermas-total').innerText = '$' + totalMermas.toFixed(2);
+      document.getElementById('dash-mermas-count').innerText = mermas30d.length + ' incidentes';
+
+      document.getElementById('dash-stock-value').innerText = '$' + totalStockVal.toFixed(2);
+      document.getElementById('dash-products-count').innerText = state.products.length + ' artículos';
+
+      // Low stock alert check
+      const lowStockCount = state.products.filter(p => p.stock <= 5).length;
+      const banner = document.getElementById('low-stock-banner');
+      if (lowStockCount > 0) {
+        banner.style.display = 'flex';
+        banner.querySelector('span').innerText = lowStockCount + ' productos tienen stock crítico (≤ 5 unidades).';
+      } else {
+        banner.style.display = 'none';
+      }
+
+      // Render today's recent sales
+      const todayStart = new Date();
+      todayStart.setHours(0,0,0,0);
+      const salesToday = state.sales.filter(s => s.timestamp >= todayStart.getTime());
+      const container = document.getElementById('dash-recent-sales');
+      if (salesToday.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="padding: 16px;"><p>No hay ventas registradas hoy aún.</p></div>';
+      } else {
+        container.innerHTML = salesToday.slice(0, 5).map(s => `
+          <div class="item-card">
+            <div class="item-info">
+              <div class="item-name">${escapeHtml(s.productName)}</div>
+              <div class="item-meta">
+                <span>Cant: ${s.quantity}</span>
+                <span>Cliente: ${escapeHtml(s.customerName || 'Mostrador')}</span>
+                <span>Hora: ${formatTime(s.timestamp)}</span>
+              </div>
+            </div>
+            <div class="item-right">
+              <div class="item-price">$${s.totalAmount.toFixed(2)}</div>
+              <span class="badge badge-success">+$${s.profit.toFixed(2)}</span>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // Draw weekly sales chart
+      drawWeeklySalesChart();
+    }
+
+    function drawWeeklySalesChart() {
+      const canvas = document.getElementById('canvas-weekly-sales');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      const w = rect.width;
+      const h = rect.height;
+      ctx.clearRect(0, 0, w, h);
+
+      // Compute last 7 days sales
+      const days = [];
+      const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      const now = new Date();
+
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+        const start = d.getTime();
+        const end = start + 86400000;
+        const total = state.sales
+          .filter(s => s.timestamp >= start && s.timestamp < end)
+          .reduce((sum, s) => sum + s.totalAmount, 0);
+        days.push({ label: dayNames[d.getDay()], total });
+      }
+
+      const maxVal = Math.max(...days.map(d => d.total), 20);
+      const paddingBottom = 26;
+      const paddingTop = 15;
+      const chartH = h - paddingBottom - paddingTop;
+      const barWidth = Math.min(32, (w / 7) - 12);
+      const step = w / 7;
+
+      days.forEach((day, idx) => {
+        const x = idx * step + (step - barWidth) / 2;
+        const barH = (day.total / maxVal) * chartH;
+        const y = h - paddingBottom - barH;
+
+        // Draw bar
+        ctx.fillStyle = '#FFDBCF';
+        ctx.beginPath();
+        roundRect(ctx, x, y, barWidth, barH, 4);
+        ctx.fill();
+
+        ctx.fillStyle = '#B85D3B';
+        if (day.total > 0) {
+          ctx.beginPath();
+          roundRect(ctx, x, y, barWidth, barH, 4);
+          ctx.fill();
+        }
+
+        // Draw label
+        ctx.fillStyle = '#666';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(day.label, x + barWidth / 2, h - 8);
+
+        // Draw value if > 0
+        if (day.total > 0) {
+          ctx.fillStyle = '#222';
+          ctx.font = 'bold 9px sans-serif';
+          ctx.fillText('$' + Math.round(day.total), x + barWidth / 2, y - 4);
+        }
+      });
+    }
+
+    function roundRect(ctx, x, y, width, height, radius) {
+      if (height <= 0) return;
+      radius = Math.min(radius, width / 2, height / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height);
+      ctx.lineTo(x, y + height);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    /* ==========================================================================
+       PRODUCTS MODULE
+       ========================================================================== */
+    function setCategoryFilter(cat) {
+      state.activeCategory = cat;
+      document.querySelectorAll('#prod-categories .chip').forEach(c => {
+        c.classList.toggle('active', c.innerText.trim().toUpperCase() === cat.toUpperCase());
+      });
+      renderProducts();
+    }
+
+    function renderProducts() {
+      const q = (document.getElementById('prod-search').value || '').toLowerCase();
+      const filtered = state.products.filter(p => {
+        const matchesCategory = state.activeCategory === 'TODAS' || p.category.toUpperCase() === state.activeCategory.toUpperCase();
+        const matchesSearch = p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q);
+        return matchesCategory && matchesSearch;
+      });
+
+      document.getElementById('prod-counter').innerText = `${filtered.length} de ${state.products.length} productos`;
+      const listEl = document.getElementById('products-list');
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📦</div>
+            <p>No se encontraron productos.</p>
+            <button class="btn btn-secondary btn-sm" style="margin-top: 10px;" onclick="openProductModal()">Agregar Primer Producto</button>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = filtered.map(p => {
+        const isLow = p.stock <= 5;
+        const margin = p.costPrice > 0 ? (((p.sellPrice - p.costPrice) / p.sellPrice) * 100).toFixed(0) : 100;
+        return `
+          <div class="item-card">
+            <div class="item-info">
+              <div class="item-name">${escapeHtml(p.name)}</div>
+              <div class="item-meta">
+                <span class="badge ${isLow ? 'badge-danger' : 'badge-neutral'}">Stock: ${p.stock} ${p.unit}</span>
+                <span>Costo: $${p.costPrice.toFixed(2)}</span>
+                <span style="color: var(--success);">Margen: ${margin}%</span>
+              </div>
+            </div>
+            <div class="item-right">
+              <div class="item-price">$${p.sellPrice.toFixed(2)}</div>
+              <div style="display: flex; gap: 4px; margin-top: 4px;">
+                <button class="btn btn-secondary btn-sm" onclick="openStockAdjustModal('${p.id}')">Ajustar</button>
+                <button class="btn btn-secondary btn-sm" onclick="openProductModal('${p.id}')">✏️</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openProductModal(prodId) {
+      const form = document.getElementById('form-product');
+      form.reset();
+      if (prodId) {
+        const prod = state.products.find(p => p.id === prodId);
+        if (prod) {
+          document.getElementById('modal-product-title').innerText = 'Editar Producto';
+          document.getElementById('prod-id').value = prod.id;
+          document.getElementById('prod-name').value = prod.name;
+          document.getElementById('prod-category').value = prod.category;
+          document.getElementById('prod-unit').value = prod.unit;
+          document.getElementById('prod-stock').value = prod.stock;
+          document.getElementById('prod-cost').value = prod.costPrice;
+          document.getElementById('prod-price').value = prod.sellPrice;
+        }
+      } else {
+        document.getElementById('modal-product-title').innerText = 'Nuevo Producto';
+        document.getElementById('prod-id').value = '';
+      }
+      updateMarginPreview();
+      openModal('modal-product');
+    }
+
+    function updateMarginPreview() {
+      const cost = parseFloat(document.getElementById('prod-cost').value) || 0;
+      const price = parseFloat(document.getElementById('prod-price').value) || 0;
+      const profit = price - cost;
+      const margin = price > 0 ? ((profit / price) * 100).toFixed(1) : 0;
+      document.getElementById('prod-margin-preview').innerText = `${margin}% ($${profit.toFixed(2)} ganancia)`;
+    }
+
+    function saveProduct(e) {
+      e.preventDefault();
+      const id = document.getElementById('prod-id').value;
+      const name = document.getElementById('prod-name').value.trim();
+      const category = document.getElementById('prod-category').value;
+      const unit = document.getElementById('prod-unit').value;
+      const stock = parseFloat(document.getElementById('prod-stock').value) || 0;
+      const cost = parseFloat(document.getElementById('prod-cost').value) || 0;
+      const price = parseFloat(document.getElementById('prod-price').value) || 0;
+
+      if (id) {
+        const idx = state.products.findIndex(p => p.id === id);
+        if (idx !== -1) {
+          const oldStock = state.products[idx].stock;
+          state.products[idx] = { ...state.products[idx], name, category, unit, stock, costPrice: cost, sellPrice: price };
+          if (oldStock !== stock) {
+            addMovement(id, name, 'AJUSTE', stock - oldStock, stock, 'Modificación manual');
+          }
+        }
+      } else {
+        const newId = 'prod_' + Date.now();
+        state.products.unshift({
+          id: newId,
+          name,
+          category,
+          unit,
+          stock,
+          costPrice: cost,
+          sellPrice: price,
+          minStock: 3
+        });
+        addMovement(newId, name, 'ALTA', stock, stock, 'Ingreso inicial');
+      }
+
+      saveData();
+      closeModal('modal-product');
+      renderProducts();
+      renderDashboard();
+    }
+
+    function openStockAdjustModal(prodId) {
+      const prod = state.products.find(p => p.id === prodId);
+      if (!prod) return;
+      document.getElementById('adj-product-id').value = prod.id;
+      document.getElementById('adj-product-name').innerText = prod.name;
+      document.getElementById('adj-current-stock').innerText = `Stock actual registrado: ${prod.stock} ${prod.unit}`;
+      document.getElementById('adj-new-stock').value = prod.stock;
+      document.getElementById('adj-reason').value = 'Conteo físico';
+      openModal('modal-stock-adjust');
+    }
+
+    function applyStockAdjustment(e) {
+      e.preventDefault();
+      const prodId = document.getElementById('adj-product-id').value;
+      const newStock = parseFloat(document.getElementById('adj-new-stock').value);
+      const reason = document.getElementById('adj-reason').value.trim();
+
+      const prod = state.products.find(p => p.id === prodId);
+      if (prod) {
+        const diff = newStock - prod.stock;
+        prod.stock = newStock;
+        addMovement(prod.id, prod.name, 'AJUSTE', diff, newStock, reason);
+        saveData();
+        closeModal('modal-stock-adjust');
+        renderProducts();
+        renderDashboard();
+      }
+    }
+
+    /* ==========================================================================
+       SALES MODULE
+       ========================================================================== */
+    function openSaleModal() {
+      populateProductSelect('sale-product-select');
+      document.getElementById('sale-qty').value = 1;
+      document.getElementById('sale-customer').value = '';
+      onSaleProductChange();
+      openModal('modal-sale');
+    }
+
+    function populateProductSelect(elementId) {
+      const sel = document.getElementById(elementId);
+      sel.innerHTML = '<option value="">-- Seleccionar Producto --</option>' +
+        state.products.map(p => `<option value="${p.id}">${escapeHtml(p.name)} (Stock: ${p.stock}) - $${p.sellPrice.toFixed(2)}</option>`).join('');
+    }
+
+    function onSaleProductChange() {
+      const prodId = document.getElementById('sale-product-select').value;
+      const prod = state.products.find(p => p.id === prodId);
+      if (prod) {
+        document.getElementById('sale-unit-price').value = prod.sellPrice;
+      } else {
+        document.getElementById('sale-unit-price').value = 0;
+      }
+      calculateSaleTotals();
+    }
+
+    function calculateSaleTotals() {
+      const prodId = document.getElementById('sale-product-select').value;
+      const qty = parseFloat(document.getElementById('sale-qty').value) || 0;
+      const price = parseFloat(document.getElementById('sale-unit-price').value) || 0;
+      const total = qty * price;
+
+      const prod = state.products.find(p => p.id === prodId);
+      const cost = prod ? prod.costPrice * qty : 0;
+      const profit = total - cost;
+
+      document.getElementById('sale-total-preview').innerText = '$' + total.toFixed(2);
+      document.getElementById('sale-profit-preview').innerText = '$' + profit.toFixed(2);
+    }
+
+    function processSale(e) {
+      e.preventDefault();
+      const prodId = document.getElementById('sale-product-select').value;
+      const qty = parseFloat(document.getElementById('sale-qty').value) || 0;
+      const price = parseFloat(document.getElementById('sale-unit-price').value) || 0;
+      const customer = document.getElementById('sale-customer').value.trim();
+
+      const prod = state.products.find(p => p.id === prodId);
+      if (!prod) {
+        alert('Por favor selecciona un producto válido.');
+        return;
+      }
+
+      if (qty <= 0) {
+        alert('La cantidad debe ser mayor a 0.');
+        return;
+      }
+
+      if (prod.stock < qty) {
+        if (!confirm(`El stock actual (${prod.stock}) es menor a la cantidad solicitada (${qty}). ¿Deseas vender de todas formas (quedará stock negativo)?`)) {
+          return;
+        }
+      }
+
+      const total = qty * price;
+      const profit = total - (prod.costPrice * qty);
+
+      // Decrement stock
+      prod.stock = Math.round((prod.stock - qty) * 100) / 100;
+
+      const saleId = 'sale_' + Date.now();
+      state.sales.unshift({
+        id: saleId,
+        productId: prod.id,
+        productName: prod.name,
+        quantity: qty,
+        unitPrice: price,
+        unitCost: prod.costPrice,
+        totalAmount: total,
+        profit: profit,
+        customerName: customer || 'Cliente Mostrador',
+        timestamp: Date.now()
+      });
+
+      addMovement(prod.id, prod.name, 'VENTA', -qty, prod.stock, `Venta a ${customer || 'Mostrador'}`);
+
+      saveData();
+      closeModal('modal-sale');
+      renderSales();
+      renderDashboard();
+    }
+
+    function renderSales() {
+      const listEl = document.getElementById('sales-list');
+      if (state.sales.length === 0) {
+        listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💰</div><p>No hay ventas registradas.</p></div>';
+        return;
+      }
+
+      listEl.innerHTML = state.sales.map(s => `
+        <div class="item-card">
+          <div class="item-info">
+            <div class="item-name">${escapeHtml(s.productName)}</div>
+            <div class="item-meta">
+              <span>Cant: <strong>${s.quantity}</strong></span>
+              <span>Unit: $${s.unitPrice.toFixed(2)}</span>
+              <span>Cliente: ${escapeHtml(s.customerName || 'Mostrador')}</span>
+              <span>${formatDate(s.timestamp)}</span>
+            </div>
+          </div>
+          <div class="item-right">
+            <div class="item-price">$${s.totalAmount.toFixed(2)}</div>
+            <span class="badge badge-success">Ganancia: $${s.profit.toFixed(2)}</span>
+            <button class="btn btn-danger btn-sm" style="margin-top: 4px;" onclick="cancelSale('${s.id}')">Anular</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function cancelSale(saleId) {
+      const sale = state.sales.find(s => s.id === saleId);
+      if (!sale) return;
+      if (!confirm(`¿Estás seguro de anular la venta de "${sale.productName}" por $${sale.totalAmount.toFixed(2)}? El stock será restituido.`)) {
+        return;
+      }
+
+      // Restore stock
+      const prod = state.products.find(p => p.id === sale.productId);
+      if (prod) {
+        prod.stock += sale.quantity;
+        addMovement(prod.id, prod.name, 'DEVOLUCION', sale.quantity, prod.stock, `Anulación Venta #${sale.id}`);
+      }
+
+      state.sales = state.sales.filter(s => s.id !== saleId);
+      saveData();
+      renderSales();
+      renderDashboard();
+    }
+
+    /* ==========================================================================
+       MERMAS (PÉRDIDAS) MODULE
+       ========================================================================== */
+    function openMermaModal() {
+      populateProductSelect('merma-product-select');
+      document.getElementById('merma-qty').value = 1;
+      document.getElementById('merma-reason').value = 'Daño';
+      onMermaProductChange();
+      openModal('modal-merma');
+    }
+
+    function onMermaProductChange() {
+      calculateMermaTotals();
+    }
+
+    function calculateMermaTotals() {
+      const prodId = document.getElementById('merma-product-select').value;
+      const qty = parseFloat(document.getElementById('merma-qty').value) || 0;
+      const prod = state.products.find(p => p.id === prodId);
+      const loss = prod ? prod.costPrice * qty : 0;
+      document.getElementById('merma-loss-preview').innerText = '$' + loss.toFixed(2);
+    }
+
+    function processMerma(e) {
+      e.preventDefault();
+      const prodId = document.getElementById('merma-product-select').value;
+      const qty = parseFloat(document.getElementById('merma-qty').value) || 0;
+      const reason = document.getElementById('merma-reason').value;
+
+      const prod = state.products.find(p => p.id === prodId);
+      if (!prod) {
+        alert('Selecciona un producto válido.');
+        return;
+      }
+
+      if (qty <= 0) {
+        alert('La cantidad de merma debe ser mayor a 0.');
+        return;
+      }
+
+      const totalCost = prod.costPrice * qty;
+      prod.stock = Math.round((prod.stock - qty) * 100) / 100;
+
+      const mermaId = 'merma_' + Date.now();
+      state.mermas.unshift({
+        id: mermaId,
+        productId: prod.id,
+        productName: prod.name,
+        quantity: qty,
+        reason: reason,
+        costPerUnit: prod.costPrice,
+        totalCost: totalCost,
+        timestamp: Date.now()
+      });
+
+      addMovement(prod.id, prod.name, 'MERMA', -qty, prod.stock, `Merma por: ${reason}`);
+
+      saveData();
+      closeModal('modal-merma');
+      renderMermas();
+      renderDashboard();
+    }
+
+    function renderMermas() {
+      const listEl = document.getElementById('mermas-list');
+      if (state.mermas.length === 0) {
+        listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🛡️</div><p>No hay registro de mermas o pérdidas.</p></div>';
+      } else {
+        listEl.innerHTML = state.mermas.map(m => `
+          <div class="item-card">
+            <div class="item-info">
+              <div class="item-name">${escapeHtml(m.productName)}</div>
+              <div class="item-meta">
+                <span class="badge badge-danger">${escapeHtml(m.reason)}</span>
+                <span>Cant: ${m.quantity}</span>
+                <span>${formatDate(m.timestamp)}</span>
+              </div>
+            </div>
+            <div class="item-right">
+              <div class="item-price" style="color: var(--danger);">-$${m.totalCost.toFixed(2)}</div>
+              <button class="btn btn-secondary btn-sm" onclick="cancelMerma('${m.id}')">Eliminar</button>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      drawMermasChart();
+    }
+
+    function cancelMerma(mermaId) {
+      const merma = state.mermas.find(m => m.id === mermaId);
+      if (!merma) return;
+      if (!confirm(`¿Eliminar este registro de merma? Se reintegrará el stock (${merma.quantity} unidades).`)) return;
+
+      const prod = state.products.find(p => p.id === merma.productId);
+      if (prod) {
+        prod.stock += merma.quantity;
+        addMovement(prod.id, prod.name, 'AJUSTE', merma.quantity, prod.stock, 'Corrección de merma eliminada');
+      }
+
+      state.mermas = state.mermas.filter(m => m.id !== mermaId);
+      saveData();
+      renderMermas();
+      renderDashboard();
+    }
+
+    function drawMermasChart() {
+      const canvas = document.getElementById('canvas-mermas-chart');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      const w = rect.width;
+      const h = rect.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const causes = {};
+      state.mermas.forEach(m => {
+        causes[m.reason] = (causes[m.reason] || 0) + m.totalCost;
+      });
+
+      const keys = Object.keys(causes);
+      if (keys.length === 0) {
+        ctx.fillStyle = '#999';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Sin pérdidas registradas', w / 2, h / 2);
+        return;
+      }
+
+      const totalLoss = Object.values(causes).reduce((a, b) => a + b, 0);
+      const colors = ['#BA1A1A', '#ED6C02', '#77574E', '#B85D3B', '#85736E'];
+
+      const centerX = w * 0.35;
+      const centerY = h / 2;
+      const radius = Math.min(w * 0.25, h * 0.38);
+
+      let startAngle = 0;
+      keys.forEach((k, idx) => {
+        const slice = (causes[k] / totalLoss) * 2 * Math.PI;
+        ctx.fillStyle = colors[idx % colors.length];
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, startAngle, startAngle + slice);
+        ctx.closePath();
+        ctx.fill();
+        startAngle += slice;
+      });
+
+      // Donut inner hole
+      ctx.fillStyle = '#FFF';
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius * 0.55, 0, 2 * Math.PI);
+      ctx.fill();
+
+      // Legend
+      const legendX = w * 0.65;
+      let legendY = 25;
+      ctx.font = '11px sans-serif';
+      ctx.textAlign = 'left';
+
+      keys.forEach((k, idx) => {
+        ctx.fillStyle = colors[idx % colors.length];
+        ctx.fillRect(legendX, legendY, 10, 10);
+        ctx.fillStyle = '#333';
+        const percent = ((causes[k] / totalLoss) * 100).toFixed(0);
+        ctx.fillText(`${k} (${percent}%)`, legendX + 16, legendY + 9);
+        legendY += 22;
+      });
+    }
+
+    /* ==========================================================================
+       REPORTS & AUDIT MODULE
+       ========================================================================== */
+    function renderReports() {
+      const period = document.getElementById('report-period').value;
+      const now = Date.now();
+      let startTime = 0;
+
+      if (period === 'today') {
+        const d = new Date();
+        d.setHours(0,0,0,0);
+        startTime = d.getTime();
+      } else if (period === '7days') {
+        startTime = now - 7 * 86400000;
+      } else if (period === '30days') {
+        startTime = now - 30 * 86400000;
+      } else if (period === 'year') {
+        const d = new Date(new Date().getFullYear(), 0, 1);
+        startTime = d.getTime();
+      }
+
+      const filteredSales = state.sales.filter(s => s.timestamp >= startTime);
+      const filteredMermas = state.mermas.filter(m => m.timestamp >= startTime);
+
+      const income = filteredSales.reduce((sum, s) => sum + s.totalAmount, 0);
+      const grossProfit = filteredSales.reduce((sum, s) => sum + s.profit, 0);
+      const totalMermas = filteredMermas.reduce((sum, m) => sum + m.totalCost, 0);
+      const netProfit = grossProfit - totalMermas;
+
+      document.getElementById('rep-income').innerText = '$' + income.toFixed(2);
+      document.getElementById('rep-gross-profit').innerText = '$' + grossProfit.toFixed(2);
+      document.getElementById('rep-mermas').innerText = '$' + totalMermas.toFixed(2);
+      document.getElementById('rep-net-profit').innerText = '$' + netProfit.toFixed(2);
+
+      // Top products ranking
+      const productStats = {};
+      filteredSales.forEach(s => {
+        if (!productStats[s.productName]) {
+          productStats[s.productName] = { qty: 0, revenue: 0, profit: 0 };
+        }
+        productStats[s.productName].qty += s.quantity;
+        productStats[s.productName].revenue += s.totalAmount;
+        productStats[s.productName].profit += s.profit;
+      });
+
+      const sortedRanking = Object.entries(productStats).sort((a, b) => b[1].profit - a[1].profit);
+      const topContainer = document.getElementById('rep-top-products');
+      if (sortedRanking.length === 0) {
+        topContainer.innerHTML = '<p style="font-size: 0.8rem; color: #888; padding: 10px 0;">Sin ventas en el período seleccionado.</p>';
+      } else {
+        topContainer.innerHTML = sortedRanking.slice(0, 5).map(([name, data], idx) => `
+          <div style="display: flex; justify-content: space-between; font-size: 0.82rem; padding: 8px 0; border-bottom: 1px solid #EEE;">
+            <div>
+              <strong>#${idx + 1} ${escapeHtml(name)}</strong>
+              <div style="color: #666; font-size: 0.72rem;">${data.qty} vendidas | Total: $${data.revenue.toFixed(2)}</div>
+            </div>
+            <strong style="color: var(--success);">+$${data.profit.toFixed(2)}</strong>
+          </div>
+        `).join('');
+      }
+
+      // Audit movements table
+      const auditTable = document.getElementById('rep-audit-rows');
+      auditTable.innerHTML = state.movements.slice(0, 40).map(m => `
+        <tr>
+          <td style="color: #666;">${formatDate(m.timestamp)}</td>
+          <td><span class="badge ${m.type === 'VENTA' ? 'badge-success' : (m.type === 'MERMA' ? 'badge-danger' : 'badge-neutral')}">${m.type}</span></td>
+          <td>${escapeHtml(m.productName)}<br><small style="color: #888;">${escapeHtml(m.reason || '')}</small></td>
+          <td><strong>${m.quantity > 0 ? '+' : ''}${m.quantity}</strong></td>
+        </tr>
+      `).join('');
+    }
+
+    /* ==========================================================================
+       SETTINGS, LICENSES & BACKUP
+       ========================================================================== */
+    function copyDeviceId() {
+      const field = document.getElementById('device-id-field');
+      field.select();
+      navigator.clipboard.writeText(field.value).then(() => {
+        alert('¡ID de dispositivo copiado al portapapeles!');
+      }).catch(() => {
+        alert('Copiado: ' + field.value);
+      });
+    }
+
+    function activateLicense() {
+      const key = document.getElementById('license-key-input').value.trim();
+      if (key.length >= 6) {
+        localStorage.setItem(STORAGE_PREFIX + 'license', key);
+        alert('¡Licencia verificada con éxito para este dispositivo!');
+        document.getElementById('license-status-badge').className = 'badge badge-success';
+        document.getElementById('license-status-badge').innerText = 'Licencia Activa (Ilimitada)';
+      } else {
+        alert('Introduce una clave de licencia válida.');
+      }
+    }
+
+    function exportBackup() {
+      const backup = {
+        app: 'FerreteriaApp',
+        version: '1.0.0',
+        exportedAt: new Date().toISOString(),
+        products: state.products,
+        sales: state.sales,
+        mermas: state.mermas,
+        movements: state.movements
+      };
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `ferreteria_backup_${Date.now()}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function triggerImportBackup() {
+      document.getElementById('backup-file-input').click();
+    }
+
+    function importBackup(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const imported = JSON.parse(evt.target.result);
+          if (imported.products && Array.isArray(imported.products)) {
+            if (confirm('Se reemplazarán todos los datos actuales con los del archivo. ¿Continuar?')) {
+              state.products = imported.products;
+              state.sales = imported.sales || [];
+              state.mermas = imported.mermas || [];
+              state.movements = imported.movements || [];
+              saveData();
+              alert('¡Respaldo importado exitosamente!');
+              switchTab('dashboard');
+            }
+          } else {
+            alert('El archivo no tiene el formato válido de respaldo de Ferretería.');
+          }
+        } catch (err) {
+          alert('Error al leer el archivo JSON: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function resetDemoData() {
+      if (confirm('¿Deseas restablecer todos los productos y registros a los datos de ejemplo iniciales?')) {
+        state.products = [...INITIAL_PRODUCTS];
+        seedInitialHistory();
+        saveData();
+        alert('Datos restablecidos correctamente.');
+        switchTab('dashboard');
+      }
+    }
+
+    /* ==========================================================================
+       UTILITIES & MODALS
+       ========================================================================== */
+    function openModal(id) {
+      document.getElementById(id).classList.add('open');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    // Close modal on click outside sheet
+    document.querySelectorAll('.modal-backdrop').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.remove('open');
+        }
+      });
+    });
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[m]));
+    }
+
+    function formatDate(ts) {
+      if (!ts) return '';
+      const d = new Date(ts);
+      return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function formatTime(ts) {
+      if (!ts) return '';
+      const d = new Date(ts);
+      return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    /* Cordova / Capacitor / Browser ready event */
+    function initApp() {
+      loadData();
+      renderDashboard();
+    }
+
+    if (window.cordova) {
+      document.addEventListener('deviceready', initApp, false);
+    } else {
+      window.addEventListener('DOMContentLoaded', initApp);
+    }
+  </script>
+</body>
+</html>
