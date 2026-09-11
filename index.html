@@ -30,6 +30,8 @@
       --success-container: #E8F5E9;
       --warning: #ED6C02;
       --warning-container: #FFF4E5;
+      --excel-green: #107C41;
+      --excel-green-light: #E7F3EC;
       --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
       --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
@@ -68,6 +70,96 @@
       background: var(--background);
       position: relative;
       box-shadow: 0 0 40px rgba(0,0,0,0.05);
+    }
+
+    /* ==========================================================================
+       LICENSE LOCK SCREEN (MANDATORY GATE)
+       ========================================================================== */
+    #license-lock-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #FFF8F6;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      overflow-y: auto;
+    }
+
+    .lock-icon-container {
+      width: 84px;
+      height: 84px;
+      background: var(--primary-container);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 42px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 20px rgba(184, 93, 59, 0.2);
+    }
+
+    .lock-card {
+      background: #FFF;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--outline-variant);
+      text-align: left;
+    }
+
+    .lock-card h2 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--primary);
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .lock-card p.subtitle {
+      font-size: 0.84rem;
+      color: #666;
+      text-align: center;
+      margin-bottom: 20px;
+      line-height: 1.4;
+    }
+
+    .device-id-box {
+      background: var(--surface-variant);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      border: 1px dashed var(--outline);
+    }
+
+    .device-id-box code {
+      font-family: monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--on-surface);
+      letter-spacing: 0.5px;
+    }
+
+    .quick-key-tip {
+      background: var(--primary-light);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      font-size: 0.78rem;
+      color: var(--primary-dark);
+      margin-top: 14px;
+      text-align: center;
+      cursor: pointer;
     }
 
     /* Header */
@@ -260,10 +352,10 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      padding: 11px 18px;
+      gap: 6px;
+      padding: 10px 16px;
       border-radius: var(--radius-md);
-      font-size: 0.88rem;
+      font-size: 0.85rem;
       font-weight: 600;
       border: none;
       cursor: pointer;
@@ -282,6 +374,16 @@
     .btn-secondary {
       background: var(--primary-light);
       color: var(--primary);
+    }
+
+    .btn-excel {
+      background: var(--excel-green);
+      color: white;
+    }
+    .btn-excel-light {
+      background: var(--excel-green-light);
+      color: var(--excel-green);
+      border: 1px solid rgba(16, 124, 65, 0.2);
     }
 
     .btn-danger {
@@ -380,6 +482,14 @@
       background: var(--primary);
       color: #FFF;
       border-color: var(--primary);
+    }
+
+    /* Action bar with Excel buttons */
+    .action-toolbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
     }
 
     /* List Items */
@@ -572,6 +682,40 @@
 </head>
 <body>
   <div id="app">
+    <!-- MANDATORY LICENSE LOCK SCREEN (BLOCKED UNTIL ACTIVATED) -->
+    <div id="license-lock-screen" style="display: none;">
+      <div class="lock-icon-container">
+        🔒
+      </div>
+      <div class="lock-card">
+        <h2>Activación Requerida</h2>
+        <p class="subtitle">
+          Esta aplicación está protegida por licencia. Debes ingresar una clave de activación autorizada para poder acceder a los módulos de inventario, ventas y reportes.
+        </p>
+
+        <label style="font-size: 0.75rem; font-weight: 700; color: var(--outline);">ID DE ESTE DISPOSITIVO:</label>
+        <div class="device-id-box">
+          <code id="lock-device-id">CARGANDO...</code>
+          <button class="btn btn-secondary btn-sm" type="button" onclick="copyLockDeviceId()">📋 Copiar ID</button>
+        </div>
+
+        <form onsubmit="handleLockActivation(event)">
+          <div class="form-group">
+            <label style="font-weight: 700;">Clave de Licencia:</label>
+            <input type="text" id="lock-license-key-input" placeholder="Ej: FERR-2026-PRO" required style="text-transform: uppercase; font-weight: bold; letter-spacing: 1px;" />
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block" style="padding: 14px; font-size: 0.95rem;">
+            🔓 Activar y Desbloquear Sistema
+          </button>
+        </form>
+
+        <div class="quick-key-tip" onclick="fillDemoKey()">
+          💡 <strong>¿Deseas probar ahora?</strong> Haz clic aquí para autocompletar la clave maestra <code>FERR-2026-PRO</code>
+        </div>
+      </div>
+    </div>
+
     <!-- Header -->
     <header>
       <div class="header-brand">
@@ -621,6 +765,13 @@
           </div>
         </div>
 
+        <!-- Quick actions buttons -->
+        <div class="grid-3">
+          <button class="btn btn-primary btn-sm" onclick="openSaleModal()">+ Venta</button>
+          <button class="btn btn-secondary btn-sm" onclick="openProductModal()">+ Producto</button>
+          <button class="btn btn-excel-light btn-sm" onclick="exportInventoryToExcel()">📊 A Excel</button>
+        </div>
+
         <!-- Chart 7 days -->
         <div class="card">
           <div class="card-title">
@@ -630,13 +781,6 @@
           <div class="chart-container">
             <canvas id="canvas-weekly-sales"></canvas>
           </div>
-        </div>
-
-        <!-- Quick actions buttons -->
-        <div class="grid-3">
-          <button class="btn btn-primary btn-sm" onclick="openSaleModal()">+ Venta</button>
-          <button class="btn btn-secondary btn-sm" onclick="openProductModal()">+ Producto</button>
-          <button class="btn btn-danger btn-sm" onclick="openMermaModal()">+ Merma</button>
         </div>
 
         <!-- Recent sales -->
@@ -666,9 +810,15 @@
           <div class="chip" onclick="setCategoryFilter('Otros')">Otros</div>
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <span id="prod-counter" style="font-size: 0.8rem; color: var(--outline); font-weight: 600;">0 productos</span>
+        <!-- Toolbar with Excel Import/Export -->
+        <div class="action-toolbar">
           <button class="btn btn-primary btn-sm" onclick="openProductModal()">+ Nuevo Producto</button>
+          <button class="btn btn-excel btn-sm" onclick="exportInventoryToExcel()">📊 Exportar a Excel</button>
+          <button class="btn btn-excel-light btn-sm" onclick="openModal('modal-excel-import')">📥 Importar Excel</button>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span id="prod-counter" style="font-size: 0.8rem; color: var(--outline); font-weight: 600;">0 productos</span>
         </div>
 
         <div id="products-list"></div>
@@ -676,12 +826,15 @@
 
       <!-- TAB 3: VENTAS -->
       <section id="tab-sales" class="tab-pane" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
           <div>
             <h2 style="font-size: 1.1rem; font-weight: 700;">Registro de Ventas</h2>
             <span style="font-size: 0.75rem; color: var(--outline);">Transacciones y cobros</span>
           </div>
-          <button class="btn btn-primary" onclick="openSaleModal()">+ Registrar Venta</button>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-excel-light btn-sm" onclick="exportSalesToExcel()">📊 Exportar a Excel</button>
+            <button class="btn btn-primary btn-sm" onclick="openSaleModal()">+ Venta</button>
+          </div>
         </div>
 
         <div id="sales-list"></div>
@@ -689,12 +842,15 @@
 
       <!-- TAB 4: MERMAS -->
       <section id="tab-mermas" class="tab-pane" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
           <div>
             <h2 style="font-size: 1.1rem; font-weight: 700;">Control de Mermas</h2>
-            <span style="font-size: 0.75rem; color: var(--outline);">Pérdidas, robos o roturas</span>
+            <span style="font-size: 0.75rem; color: var(--outline);">Pérdidas, roturas o extravíos</span>
           </div>
-          <button class="btn btn-danger" onclick="openMermaModal()">+ Registrar Merma</button>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-excel-light btn-sm" onclick="exportMermasToExcel()">📊 Exportar a Excel</button>
+            <button class="btn btn-danger btn-sm" onclick="openMermaModal()">+ Merma</button>
+          </div>
         </div>
 
         <div class="card">
@@ -709,15 +865,18 @@
 
       <!-- TAB 5: INFORMES -->
       <section id="tab-reports" class="tab-pane" style="display: none;">
-        <div class="card-title">
+        <div class="card-title" style="flex-wrap: wrap; gap: 8px;">
           <span>📊 Reportes y Rentabilidad</span>
-          <select id="report-period" onchange="renderReports()" style="padding: 4px 8px; border-radius: 6px; font-size: 0.8rem;">
-            <option value="today">Hoy</option>
-            <option value="7days">Últimos 7 días</option>
-            <option value="30days" selected>Últimos 30 días</option>
-            <option value="year">Este Año</option>
-            <option value="all">Histórico Completo</option>
-          </select>
+          <div style="display: flex; gap: 6px;">
+            <select id="report-period" onchange="renderReports()" style="padding: 5px 8px; border-radius: 6px; font-size: 0.8rem;">
+              <option value="today">Hoy</option>
+              <option value="7days">Últimos 7 días</option>
+              <option value="30days" selected>Últimos 30 días</option>
+              <option value="year">Este Año</option>
+              <option value="all">Histórico Completo</option>
+            </select>
+            <button class="btn btn-excel btn-sm" onclick="exportReportToExcel()">📊 Excel</button>
+          </div>
         </div>
 
         <div class="grid-2">
@@ -768,43 +927,57 @@
       <!-- TAB 6: AJUSTES / LICENCIA -->
       <section id="tab-settings" class="tab-pane" style="display: none;">
         <div class="card">
-          <div class="card-title">🔑 Licencia y Dispositivo</div>
+          <div class="card-title">🔑 Licencia de este Terminal</div>
           <div class="form-group">
-            <label>ID de Dispositivo:</label>
+            <label>ID Único de Dispositivo:</label>
             <div style="display: flex; gap: 8px;">
-              <input type="text" id="device-id-field" readonly />
+              <input type="text" id="device-id-field" readonly style="font-family: monospace; font-weight: bold;" />
               <button class="btn btn-secondary btn-sm" onclick="copyDeviceId()">Copiar</button>
             </div>
           </div>
-          <div class="form-group">
-            <label>Clave de Activación:</label>
-            <div style="display: flex; gap: 8px;">
-              <input type="text" id="license-key-input" placeholder="XXXX-XXXX-XXXX" />
-              <button class="btn btn-primary btn-sm" onclick="activateLicense()">Activar</button>
-            </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span style="font-size: 0.85rem; font-weight: 600;">Estado de Licencia:</span>
+            <span id="license-status-badge" class="badge badge-success">ACTIVA</span>
           </div>
-          <div id="license-status-badge" class="badge badge-success">Licencia Activa (Ilimitada)</div>
+          <button class="btn btn-danger btn-sm btn-block" onclick="lockSystemForTesting()">
+            🔒 Bloquear Sistema (Probar Pantalla de Activación)
+          </button>
         </div>
 
         <div class="card">
-          <div class="card-title">💾 Respaldo y Datos</div>
+          <div class="card-title">📊 Integración con Excel</div>
           <p style="font-size: 0.8rem; color: var(--outline); margin-bottom: 12px;">
-            Exporta tus datos en formato JSON para no perder tu inventario y registros o restáuralos en cualquier dispositivo.
+            Exporta o importa fácilmente tus inventarios, ventas y mermas en formato compatible con Microsoft Excel (.csv UTF-8 delimitado por punto y coma).
           </p>
           <div class="grid-2">
-            <button class="btn btn-secondary btn-sm" onclick="exportBackup()">📥 Descargar Backup</button>
-            <button class="btn btn-secondary btn-sm" onclick="triggerImportBackup()">📤 Restaurar Backup</button>
+            <button class="btn btn-excel btn-sm" onclick="exportInventoryToExcel()">📊 Exportar Inventario</button>
+            <button class="btn btn-excel-light btn-sm" onclick="openModal('modal-excel-import')">📥 Importar Excel</button>
+          </div>
+          <div class="grid-2" style="margin-top: 8px;">
+            <button class="btn btn-excel-light btn-sm" onclick="exportSalesToExcel()">📊 Exportar Ventas</button>
+            <button class="btn btn-excel-light btn-sm" onclick="exportMermasToExcel()">📊 Exportar Mermas</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">💾 Copias de Seguridad (JSON)</div>
+          <p style="font-size: 0.8rem; color: var(--outline); margin-bottom: 12px;">
+            Crea un respaldo íntegro de la base de datos local para transferirlo a otro teléfono o computadora.
+          </p>
+          <div class="grid-2">
+            <button class="btn btn-secondary btn-sm" onclick="exportBackup()">📥 Descargar Respaldo</button>
+            <button class="btn btn-secondary btn-sm" onclick="triggerImportBackup()">📤 Restaurar Respaldo</button>
             <input type="file" id="backup-file-input" style="display:none" onchange="importBackup(event)" accept=".json" />
           </div>
           <div style="margin-top: 14px;">
-            <button class="btn btn-danger btn-sm btn-block" onclick="resetDemoData()">🔄 Restaurar Datos de Demostración</button>
+            <button class="btn btn-danger btn-sm btn-block" onclick="resetDemoData()">🔄 Cargar Datos de Demostración</button>
           </div>
         </div>
 
         <div class="card" style="text-align: center; color: var(--outline); font-size: 0.75rem;">
-          <p><strong>Ferretería App v1.0.0</strong></p>
+          <p><strong>Ferretería App v1.2.0</strong></p>
           <p>Compilación Standalone HTML5 / PWA / Android WebView</p>
-          <p>Almacenamiento Local 100% Offline (SQLite / LocalStorage)</p>
+          <p>Almacenamiento Local 100% Offline con Protección de Licencia</p>
         </div>
       </section>
     </main>
@@ -832,6 +1005,44 @@
         <span>Informes</span>
       </button>
     </nav>
+
+    <!-- MODAL: IMPORTAR DESDE EXCEL -->
+    <div id="modal-excel-import" class="modal-backdrop">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h3 class="modal-title">📥 Importar Catálogo desde Excel</h3>
+          <button class="icon-btn" style="color: #333; background: #EEE;" onclick="closeModal('modal-excel-import')">✕</button>
+        </div>
+        <div style="font-size: 0.84rem; color: #555; margin-bottom: 14px; line-height: 1.4;">
+          <p>Selecciona un archivo <strong>.csv</strong> generado desde Microsoft Excel.</p>
+          <p style="margin-top: 6px;">
+            <strong>Columnas esperadas (en orden):</strong><br />
+            <code>Nombre; Categoría; Unidad; Stock; Costo; Precio</code>
+          </p>
+        </div>
+
+        <div style="margin-bottom: 14px;">
+          <button class="btn btn-excel-light btn-sm btn-block" onclick="downloadExcelTemplate()">
+            📄 Descargar Plantilla Modelo para Excel (.csv)
+          </button>
+        </div>
+
+        <div class="form-group">
+          <label>Selecciona tu archivo Excel (.csv o .txt delimitado):</label>
+          <input type="file" id="excel-file-input" accept=".csv, .txt, text/csv" style="padding: 10px;" />
+        </div>
+
+        <div class="preview-box">
+          <span style="font-size: 0.78rem;">
+            * Si el producto ya existe (mismo nombre), se actualizará su stock y precios. Si no existe, se creará uno nuevo.
+          </span>
+        </div>
+
+        <button type="button" class="btn btn-excel btn-block" onclick="processExcelImport()">
+          Procesar e Importar al Inventario
+        </button>
+      </div>
+    </div>
 
     <!-- MODAL: PRODUCTO (NUEVO / EDITAR) -->
     <div id="modal-product" class="modal-backdrop">
@@ -1002,6 +1213,7 @@
         <div style="display: flex; flex-direction: column; gap: 10px;">
           <button class="btn btn-primary" onclick="closeModal('modal-quick-action'); openSaleModal();">💰 Nueva Venta</button>
           <button class="btn btn-secondary" onclick="closeModal('modal-quick-action'); openProductModal();">📦 Nuevo Producto</button>
+          <button class="btn btn-excel" onclick="closeModal('modal-quick-action'); exportInventoryToExcel();">📊 Exportar Inventario a Excel</button>
           <button class="btn btn-danger" onclick="closeModal('modal-quick-action'); openMermaModal();">📉 Registrar Merma</button>
           <button class="btn btn-secondary" onclick="closeModal('modal-quick-action'); switchTab('reports');">📑 Ver Reporte de Rentabilidad</button>
         </div>
@@ -1011,9 +1223,10 @@
 
   <script>
     /* ==========================================================================
-       DATA MODEL & LOCAL STORAGE ENGINE
+       DATA MODEL, LICENSE ENGINE & LOCAL STORAGE
        ========================================================================== */
     const STORAGE_PREFIX = 'ferreteria_';
+    const MASTER_KEYS = ['FERR-2026-PRO', 'ACTIVA-2026', 'FERRETERIA-FULL'];
 
     const INITIAL_PRODUCTS = [
       { id: 'prod_1', name: 'Martillo de Uña 16oz', category: 'Herramientas', unit: 'Unidades', stock: 12, costPrice: 8.50, sellPrice: 15.00, minStock: 3 },
@@ -1027,15 +1240,34 @@
     ];
 
     let state = {
+      isLicenseActive: false,
+      deviceId: '',
       products: [],
       sales: [],
       mermas: [],
       movements: [],
-      activeCategory: 'TODAS',
-      deviceId: ''
+      activeCategory: 'TODAS'
     };
 
     function loadData() {
+      // 1. Device ID setup
+      let devId = localStorage.getItem(STORAGE_PREFIX + 'device_id');
+      if (!devId) {
+        devId = 'FERR-' + Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + (new Date().getFullYear());
+        localStorage.setItem(STORAGE_PREFIX + 'device_id', devId);
+      }
+      state.deviceId = devId;
+
+      const lockIdEl = document.getElementById('lock-device-id');
+      if (lockIdEl) lockIdEl.innerText = devId;
+      const setDevIdEl = document.getElementById('device-id-field');
+      if (setDevIdEl) setDevIdEl.value = devId;
+
+      // 2. License Status Check (Strict Gate)
+      const licenseStatus = localStorage.getItem(STORAGE_PREFIX + 'license_active');
+      state.isLicenseActive = (licenseStatus === 'true');
+
+      // 3. Load database
       const p = localStorage.getItem(STORAGE_PREFIX + 'products');
       if (!p) {
         state.products = [...INITIAL_PRODUCTS];
@@ -1053,14 +1285,93 @@
         }
       }
 
-      // Device ID setup
-      let devId = localStorage.getItem(STORAGE_PREFIX + 'device_id');
-      if (!devId) {
-        devId = 'FERR-' + Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
-        localStorage.setItem(STORAGE_PREFIX + 'device_id', devId);
+      // Verify License Lock
+      applyLicenseGate();
+    }
+
+    function applyLicenseGate() {
+      const lockScreen = document.getElementById('license-lock-screen');
+      const header = document.querySelector('header');
+      const main = document.getElementById('main-content');
+      const nav = document.querySelector('nav.bottom-nav');
+
+      if (!state.isLicenseActive) {
+        // App is locked!
+        lockScreen.style.display = 'flex';
+        header.style.filter = 'blur(4px)';
+        main.style.filter = 'blur(4px)';
+        nav.style.filter = 'blur(4px)';
+        header.style.pointerEvents = 'none';
+        main.style.pointerEvents = 'none';
+        nav.style.pointerEvents = 'none';
+      } else {
+        // App is unlocked
+        lockScreen.style.display = 'none';
+        header.style.filter = 'none';
+        main.style.filter = 'none';
+        nav.style.filter = 'none';
+        header.style.pointerEvents = 'auto';
+        main.style.pointerEvents = 'auto';
+        nav.style.pointerEvents = 'auto';
       }
-      state.deviceId = devId;
-      document.getElementById('device-id-field').value = devId;
+
+      const badge = document.getElementById('license-status-badge');
+      if (badge) {
+        badge.className = state.isLicenseActive ? 'badge badge-success' : 'badge badge-danger';
+        badge.innerText = state.isLicenseActive ? 'ACTIVA (Ilimitada)' : 'BLOQUEADA';
+      }
+    }
+
+    function handleLockActivation(e) {
+      e.preventDefault();
+      const input = document.getElementById('lock-license-key-input').value.trim().toUpperCase();
+      
+      if (validateLicenseKey(input, state.deviceId)) {
+        state.isLicenseActive = true;
+        localStorage.setItem(STORAGE_PREFIX + 'license_active', 'true');
+        localStorage.setItem(STORAGE_PREFIX + 'license_key', input);
+        alert('🎉 ¡Licencia activada con éxito! Bienvenido al sistema.');
+        applyLicenseGate();
+        renderDashboard();
+      } else {
+        alert('❌ Clave de activación incorrecta. Por favor verifica la clave introducida.');
+      }
+    }
+
+    function validateLicenseKey(key, deviceId) {
+      if (!key) return false;
+      // 1. Check master keys
+      if (MASTER_KEYS.includes(key)) return true;
+
+      // 2. Check algorithmic key derived from device ID (e.g., FERR- + reversed suffix)
+      const cleanDev = deviceId.replace(/[^A-Z0-9]/g, '');
+      const expectedCode = 'ACT-' + cleanDev.slice(-6);
+      if (key === expectedCode) return true;
+
+      // 3. Any structured key with valid length and prefix
+      if (key.startsWith('FERR-') && key.length >= 10) return true;
+
+      return false;
+    }
+
+    function fillDemoKey() {
+      document.getElementById('lock-license-key-input').value = 'FERR-2026-PRO';
+    }
+
+    function copyLockDeviceId() {
+      navigator.clipboard.writeText(state.deviceId).then(() => {
+        alert('📋 ID de Dispositivo copiado al portapapeles: ' + state.deviceId);
+      }).catch(() => {
+        alert('ID: ' + state.deviceId);
+      });
+    }
+
+    function lockSystemForTesting() {
+      if (confirm('¿Deseas bloquear el sistema para probar la pantalla de activación por licencia?')) {
+        state.isLicenseActive = false;
+        localStorage.setItem(STORAGE_PREFIX + 'license_active', 'false');
+        applyLicenseGate();
+      }
     }
 
     function saveData() {
@@ -1103,9 +1414,246 @@
     }
 
     /* ==========================================================================
+       EXCEL EXPORT & IMPORT ENGINE (.CSV CON BOM UTF-8 PARA MICROSOFT EXCEL)
+       ========================================================================== */
+
+    // Helper to download Excel CSV with UTF-8 BOM so Excel opens with proper accents & columns
+    function downloadExcelFile(csvContent, filename) {
+      const bom = "\uFEFF"; // Byte Order Mark for Excel UTF-8 recognition
+      const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function exportInventoryToExcel() {
+      if (state.products.length === 0) {
+        alert('No hay productos en el inventario para exportar.');
+        return;
+      }
+
+      let csv = "Código;Nombre del Producto;Categoría;Unidad de Medida;Stock Actual;Costo Unitario ($);Precio Venta ($);Margen (%);Valor Total Stock ($);Estado Stock\r\n";
+
+      state.products.forEach(p => {
+        const margin = p.costPrice > 0 ? (((p.sellPrice - p.costPrice) / p.sellPrice) * 100).toFixed(1) : "100.0";
+        const valTotal = (p.stock * p.costPrice).toFixed(2);
+        const estado = p.stock <= 5 ? "STOCK CRÍTICO" : "NORMAL";
+        csv += `"${p.id}";"${escapeCsv(p.name)}";"${escapeCsv(p.category)}";"${escapeCsv(p.unit)}";${p.stock};${p.costPrice.toFixed(2)};${p.sellPrice.toFixed(2)};${margin}%;${valTotal};"${estado}"\r\n`;
+      });
+
+      const todayStr = new Date().toISOString().slice(0,10);
+      downloadExcelFile(csv, `Inventario_Ferreteria_${todayStr}.csv`);
+    }
+
+    function exportSalesToExcel() {
+      if (state.sales.length === 0) {
+        alert('No hay ventas registradas para exportar.');
+        return;
+      }
+
+      let csv = "ID Transacción;Fecha;Hora;Producto;Cantidad;Precio Unitario ($);Total Cobrado ($);Costo ($);Ganancia Neta ($);Cliente\r\n";
+
+      state.sales.forEach(s => {
+        const d = new Date(s.timestamp);
+        const fecha = d.toLocaleDateString('es-ES');
+        const hora = d.toLocaleTimeString('es-ES');
+        csv += `"${s.id}";"${fecha}";"${hora}";"${escapeCsv(s.productName)}";${s.quantity};${s.unitPrice.toFixed(2)};${s.totalAmount.toFixed(2)};${(s.unitCost * s.quantity).toFixed(2)};${s.profit.toFixed(2)};"${escapeCsv(s.customerName || 'Mostrador')}"\r\n`;
+      });
+
+      const todayStr = new Date().toISOString().slice(0,10);
+      downloadExcelFile(csv, `Ventas_Ferreteria_${todayStr}.csv`);
+    }
+
+    function exportMermasToExcel() {
+      if (state.mermas.length === 0) {
+        alert('No hay registro de mermas para exportar.');
+        return;
+      }
+
+      let csv = "ID Merma;Fecha;Hora;Producto;Cantidad Perdida;Motivo;Costo Unitario ($);Pérdida Total ($)\r\n";
+
+      state.mermas.forEach(m => {
+        const d = new Date(m.timestamp);
+        const fecha = d.toLocaleDateString('es-ES');
+        const hora = d.toLocaleTimeString('es-ES');
+        csv += `"${m.id}";"${fecha}";"${hora}";"${escapeCsv(m.productName)}";${m.quantity};"${escapeCsv(m.reason)}";${m.costPerUnit.toFixed(2)};${m.totalCost.toFixed(2)}\r\n`;
+      });
+
+      const todayStr = new Date().toISOString().slice(0,10);
+      downloadExcelFile(csv, `Mermas_Ferreteria_${todayStr}.csv`);
+    }
+
+    function exportReportToExcel() {
+      const period = document.getElementById('report-period').value;
+      const now = Date.now();
+      let startTime = 0;
+      if (period === 'today') {
+        const d = new Date(); d.setHours(0,0,0,0); startTime = d.getTime();
+      } else if (period === '7days') startTime = now - 7 * 86400000;
+      else if (period === '30days') startTime = now - 30 * 86400000;
+      else if (period === 'year') startTime = new Date(new Date().getFullYear(), 0, 1).getTime();
+
+      const fSales = state.sales.filter(s => s.timestamp >= startTime);
+      const fMermas = state.mermas.filter(m => m.timestamp >= startTime);
+
+      const ingresos = fSales.reduce((sum, s) => sum + s.totalAmount, 0);
+      const gananciaBruta = fSales.reduce((sum, s) => sum + s.profit, 0);
+      const perdidasMermas = fMermas.reduce((sum, m) => sum + m.totalCost, 0);
+      const gananciaNeta = gananciaBruta - perdidasMermas;
+
+      let csv = "RESUMEN FINANCIERO FERRETERIA\r\n";
+      csv += `Período Seleccionado;${period}\r\n`;
+      csv += `Fecha de Emisión;${new Date().toLocaleString('es-ES')}\r\n\r\n`;
+      csv += `CONCEPTO;MONTO ($)\r\n`;
+      csv += `Ingresos Totales por Ventas;${ingresos.toFixed(2)}\r\n`;
+      csv += `Utilidad Bruta;${gananciaBruta.toFixed(2)}\r\n`;
+      csv += `Pérdidas Totales en Mermas;${perdidasMermas.toFixed(2)}\r\n`;
+      csv += `UTILIDAD NETA REAL;${gananciaNeta.toFixed(2)}\r\n\r\n`;
+
+      csv += "TOP PRODUCTOS VENDIDOS\r\n";
+      csv += "Producto;Unidades Vendidas;Total Recaudado ($);Ganancia ($)\r\n";
+
+      const ranking = {};
+      fSales.forEach(s => {
+        if (!ranking[s.productName]) ranking[s.productName] = { qty: 0, rev: 0, prof: 0 };
+        ranking[s.productName].qty += s.quantity;
+        ranking[s.productName].rev += s.totalAmount;
+        ranking[s.productName].prof += s.profit;
+      });
+
+      Object.entries(ranking).sort((a,b) => b[1].prof - a[1].prof).forEach(([nom, dat]) => {
+        csv += `"${escapeCsv(nom)}";${dat.qty};${dat.rev.toFixed(2)};${dat.prof.toFixed(2)}\r\n`;
+      });
+
+      downloadExcelFile(csv, `Informe_Financiero_Ferreteria_${Date.now()}.csv`);
+    }
+
+    function downloadExcelTemplate() {
+      const template = "Nombre;Categoría;Unidad;Stock;Costo;Precio\r\n" +
+        "Sierra Caladora 500W;Herramientas;Unidades;6;45.00;75.00\r\n" +
+        "Pintura Esmalte Sintético Negro 1L;Pinturas;Litros;15;6.20;12.00\r\n" +
+        "Tornillo Autoperforante 2 Pulgadas;Ferretería;Unidades;200;0.05;0.15\r\n" +
+        "Tubo PVC Sanitario 110mm x 3m;Plomería;Metros;20;8.50;15.00\r\n";
+      downloadExcelFile(template, "Plantilla_Importacion_Ferreteria.csv");
+    }
+
+    function processExcelImport() {
+      const fileInput = document.getElementById('excel-file-input');
+      const file = fileInput.files[0];
+      if (!file) {
+        alert('Por favor selecciona un archivo .csv de Excel.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const content = e.target.result;
+          const lines = content.split(/\r\n|\n/);
+          let importedCount = 0;
+          let updatedCount = 0;
+
+          lines.forEach((line, index) => {
+            const cleanLine = line.trim();
+            if (!cleanLine) return;
+
+            // Detect separator: semicolon ';' or comma ','
+            const sep = cleanLine.includes(';') ? ';' : ',';
+            const cols = parseCsvLine(cleanLine, sep);
+
+            if (cols.length < 4) return;
+
+            const name = cols[0].trim();
+            // Skip header row
+            if (index === 0 && (name.toLowerCase() === 'nombre' || name.toLowerCase() === 'producto' || name.toLowerCase() === 'name')) {
+              return;
+            }
+
+            const category = cols[1] ? cols[1].trim() : 'Ferretería';
+            const unit = cols[2] ? cols[2].trim() : 'Unidades';
+            const stock = parseFloat(cols[3]) || 0;
+            const cost = parseFloat(cols[4]) || 0;
+            const price = parseFloat(cols[5]) || (cost * 1.5);
+
+            // Check if exists
+            const existing = state.products.find(p => p.name.toLowerCase() === name.toLowerCase());
+            if (existing) {
+              const oldStock = existing.stock;
+              existing.category = category;
+              existing.unit = unit;
+              existing.stock = stock;
+              existing.costPrice = cost;
+              existing.sellPrice = price;
+              addMovement(existing.id, existing.name, 'AJUSTE', stock - oldStock, stock, 'Importación Excel');
+              updatedCount++;
+            } else {
+              const newId = 'prod_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+              state.products.push({
+                id: newId,
+                name: name,
+                category: category,
+                unit: unit,
+                stock: stock,
+                costPrice: cost,
+                sellPrice: price,
+                minStock: 3
+              });
+              addMovement(newId, name, 'ALTA', stock, stock, 'Importación Excel');
+              importedCount++;
+            }
+          });
+
+          saveData();
+          closeModal('modal-excel-import');
+          fileInput.value = '';
+          alert(`✅ Importación completada con éxito:\n• ${importedCount} productos nuevos creados.\n• ${updatedCount} productos existentes actualizados.`);
+          renderProducts();
+          renderDashboard();
+        } catch (err) {
+          alert('Error al procesar el archivo Excel: ' + err.message);
+        }
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    function parseCsvLine(text, separator) {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === separator && !inQuotes) {
+          result.push(current.trim().replace(/^"|"$/g, ''));
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current.trim().replace(/^"|"$/g, ''));
+      return result;
+    }
+
+    function escapeCsv(str) {
+      if (!str) return '';
+      return String(str).replace(/"/g, '""');
+    }
+
+    /* ==========================================================================
        TAB ROUTING & UI RENDERERS
        ========================================================================== */
     function switchTab(tabId) {
+      if (!state.isLicenseActive) {
+        applyLicenseGate();
+        return;
+      }
+
       document.querySelectorAll('.tab-pane').forEach(el => el.style.display = 'none');
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
 
@@ -1134,7 +1682,6 @@
       const now = Date.now();
       const monthAgo = now - 30 * 86400000;
 
-      // Filter last 30 days
       const sales30d = state.sales.filter(s => s.timestamp >= monthAgo);
       const totalSales = sales30d.reduce((sum, s) => sum + s.totalAmount, 0);
       const totalProfit = sales30d.reduce((sum, s) => sum + s.profit, 0);
@@ -1157,7 +1704,6 @@
       document.getElementById('dash-stock-value').innerText = '$' + totalStockVal.toFixed(2);
       document.getElementById('dash-products-count').innerText = state.products.length + ' artículos';
 
-      // Low stock alert check
       const lowStockCount = state.products.filter(p => p.stock <= 5).length;
       const banner = document.getElementById('low-stock-banner');
       if (lowStockCount > 0) {
@@ -1193,7 +1739,6 @@
         `).join('');
       }
 
-      // Draw weekly sales chart
       drawWeeklySalesChart();
     }
 
@@ -1211,7 +1756,6 @@
       const h = rect.height;
       ctx.clearRect(0, 0, w, h);
 
-      // Compute last 7 days sales
       const days = [];
       const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
       const now = new Date();
@@ -1238,7 +1782,6 @@
         const barH = (day.total / maxVal) * chartH;
         const y = h - paddingBottom - barH;
 
-        // Draw bar
         ctx.fillStyle = '#FFDBCF';
         ctx.beginPath();
         roundRect(ctx, x, y, barWidth, barH, 4);
@@ -1251,13 +1794,11 @@
           ctx.fill();
         }
 
-        // Draw label
         ctx.fillStyle = '#666';
         ctx.font = '11px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(day.label, x + barWidth / 2, h - 8);
 
-        // Draw value if > 0
         if (day.total > 0) {
           ctx.fillStyle = '#222';
           ctx.font = 'bold 9px sans-serif';
@@ -1499,7 +2040,7 @@
       }
 
       if (prod.stock < qty) {
-        if (!confirm(`El stock actual (${prod.stock}) es menor a la cantidad solicitada (${qty}). ¿Deseas vender de todas formas (quedará stock negativo)?`)) {
+        if (!confirm(`El stock actual (${prod.stock}) es menor a la cantidad solicitada (${qty}). ¿Deseas vender de todas formas?`)) {
           return;
         }
       }
@@ -1566,7 +2107,6 @@
         return;
       }
 
-      // Restore stock
       const prod = state.products.find(p => p.id === sale.productId);
       if (prod) {
         prod.stock += sale.quantity;
@@ -1732,7 +2272,7 @@
         startAngle += slice;
       });
 
-      // Donut inner hole
+      // Donut hole
       ctx.fillStyle = '#FFF';
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius * 0.55, 0, 2 * Math.PI);
@@ -1788,7 +2328,6 @@
       document.getElementById('rep-mermas').innerText = '$' + totalMermas.toFixed(2);
       document.getElementById('rep-net-profit').innerText = '$' + netProfit.toFixed(2);
 
-      // Top products ranking
       const productStats = {};
       filteredSales.forEach(s => {
         if (!productStats[s.productName]) {
@@ -1815,7 +2354,6 @@
         `).join('');
       }
 
-      // Audit movements table
       const auditTable = document.getElementById('rep-audit-rows');
       auditTable.innerHTML = state.movements.slice(0, 40).map(m => `
         <tr>
@@ -1828,7 +2366,7 @@
     }
 
     /* ==========================================================================
-       SETTINGS, LICENSES & BACKUP
+       SETTINGS & BACKUP
        ========================================================================== */
     function copyDeviceId() {
       const field = document.getElementById('device-id-field');
@@ -1840,22 +2378,10 @@
       });
     }
 
-    function activateLicense() {
-      const key = document.getElementById('license-key-input').value.trim();
-      if (key.length >= 6) {
-        localStorage.setItem(STORAGE_PREFIX + 'license', key);
-        alert('¡Licencia verificada con éxito para este dispositivo!');
-        document.getElementById('license-status-badge').className = 'badge badge-success';
-        document.getElementById('license-status-badge').innerText = 'Licencia Activa (Ilimitada)';
-      } else {
-        alert('Introduce una clave de licencia válida.');
-      }
-    }
-
     function exportBackup() {
       const backup = {
         app: 'FerreteriaApp',
-        version: '1.0.0',
+        version: '1.2.0',
         exportedAt: new Date().toISOString(),
         products: state.products,
         sales: state.sales,
@@ -1917,6 +2443,10 @@
        UTILITIES & MODALS
        ========================================================================== */
     function openModal(id) {
+      if (!state.isLicenseActive) {
+        applyLicenseGate();
+        return;
+      }
       document.getElementById(id).classList.add('open');
     }
 
@@ -1924,7 +2454,6 @@
       document.getElementById(id).classList.remove('open');
     }
 
-    // Close modal on click outside sheet
     document.querySelectorAll('.modal-backdrop').forEach(modal => {
       modal.addEventListener('click', (e) => {
         if (e.target === modal) {
@@ -1952,7 +2481,6 @@
       return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
     }
 
-    /* Cordova / Capacitor / Browser ready event */
     function initApp() {
       loadData();
       renderDashboard();

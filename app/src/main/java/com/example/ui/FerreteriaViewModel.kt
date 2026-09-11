@@ -267,9 +267,9 @@ class FerreteriaViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun activateLicense(key: String): Boolean {
-        // Accept any key matching prefix or non-blank key, or allow instant activation
-        if (key.trim().length >= 4) {
-            prefs.edit().putBoolean("license_active", true).apply()
+        val trimmed = key.trim().uppercase()
+        if (trimmed == "FERR-2026-PRO" || trimmed == "ACTIVA-2026" || trimmed.startsWith("FERR-") || trimmed.length >= 6) {
+            prefs.edit().putBoolean("license_active", true).putString("license_key", trimmed).apply()
             _isLicenseActive.value = true
             showSnackbar("¡Licencia activada con éxito!")
             return true
@@ -277,6 +277,59 @@ class FerreteriaViewModel(application: Application) : AndroidViewModel(applicati
             showSnackbar("Clave inválida. Introduce una clave válida.")
             return false
         }
+    }
+
+    fun deactivateLicense() {
+        prefs.edit().putBoolean("license_active", false).apply()
+        _isLicenseActive.value = false
+        showSnackbar("Sistema bloqueado. Se requiere activación.")
+    }
+
+    fun generateProductsExcelCsv(): String {
+        val sb = StringBuilder()
+        sb.append('\uFEFF') // BOM for Excel UTF-8
+        sb.append("Código;Nombre;Categoría;Unidad;Stock;Costo Unitario ($);Precio Venta ($);Margen (%)\r\n")
+        products.value.forEach { p ->
+            val margin = if (p.precioVenta > 0) (((p.precioVenta - p.costoUnitario) / p.precioVenta) * 100).toInt() else 100
+            sb.append("${p.id};\"${p.nombre}\";\"${p.categoria}\";\"${p.unidadMedida}\";${p.stock};${p.costoUnitario};${p.precioVenta};$margin%\r\n")
+        }
+        return sb.toString()
+    }
+
+    fun importProductsFromCsv(csvText: String): Pair<Int, Int> {
+        var created = 0
+        var updated = 0
+        val lines = csvText.lines()
+        lines.forEachIndexed { index, rawLine ->
+            val line = rawLine.trim()
+            if (line.isEmpty()) return@forEachIndexed
+
+            val sep = if (line.contains(';')) ';' else ','
+            val cols = line.split(sep).map { it.trim().removeSurrounding("\"") }
+            if (cols.size < 4) return@forEachIndexed
+
+            val name = cols[0]
+            if (index == 0 && (name.equals("nombre", ignoreCase = true) || name.equals("producto", ignoreCase = true) || name.equals("código", ignoreCase = true))) {
+                return@forEachIndexed
+            }
+
+            val category = cols.getOrNull(1)?.ifEmpty { "Ferretería" } ?: "Ferretería"
+            val unit = cols.getOrNull(2)?.ifEmpty { "Unidades" } ?: "Unidades"
+            val stock = cols.getOrNull(3)?.toDoubleOrNull() ?: 0.0
+            val cost = cols.getOrNull(4)?.toDoubleOrNull() ?: 0.0
+            val price = cols.getOrNull(5)?.toDoubleOrNull() ?: (cost * 1.5)
+
+            val existing = products.value.find { it.nombre.equals(name, ignoreCase = true) }
+            if (existing != null) {
+                saveProduct(existing.id, name, category, cost, price, unit, stock)
+                updated++
+            } else {
+                saveProduct(0L, name, category, cost, price, unit, stock)
+                created++
+            }
+        }
+        showSnackbar("Importación Excel: $created nuevos, $updated actualizados")
+        return Pair(created, updated)
     }
 
     fun resetDemoData() {

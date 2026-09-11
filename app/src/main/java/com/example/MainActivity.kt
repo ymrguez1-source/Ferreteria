@@ -63,6 +63,7 @@ import com.example.ui.components.AdjustStockDialog
 import com.example.ui.components.ProductDialog
 import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.InformesScreen
+import com.example.ui.screens.LicenseLockScreen
 import com.example.ui.screens.MermasScreen
 import com.example.ui.screens.ProductosScreen
 import com.example.ui.screens.UsuariosScreen
@@ -88,6 +89,7 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FerreteriaApp(viewModel: FerreteriaViewModel) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     var selectedScreen by remember { mutableIntStateOf(0) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -116,6 +118,20 @@ fun FerreteriaApp(viewModel: FerreteriaViewModel) {
             snackbarHostState.showSnackbar(it)
             viewModel.clearSnackbar()
         }
+    }
+
+    if (!isLicenseActive) {
+        Scaffold(
+            contentWindowInsets = WindowInsets.safeDrawing,
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        ) { innerPadding ->
+            LicenseLockScreen(
+                deviceId = deviceId,
+                modifier = Modifier.padding(innerPadding),
+                onActivate = { key -> viewModel.activateLicense(key) }
+            )
+        }
+        return
     }
 
     Scaffold(
@@ -319,6 +335,18 @@ fun FerreteriaApp(viewModel: FerreteriaViewModel) {
                     onCreateUser = { u, p, r -> viewModel.createUser(u, p, r) },
                     onDeleteUser = { id -> viewModel.deleteUser(id) },
                     onActivateLicense = { key -> viewModel.activateLicense(key) },
+                    onDeactivateLicense = { viewModel.deactivateLicense() },
+                    onExportExcel = {
+                        val csv = viewModel.generateProductsExcelCsv()
+                        val sendIntent = android.content.Intent().apply {
+                            action = android.content.Intent.ACTION_SEND
+                            putExtra(android.content.Intent.EXTRA_TEXT, csv)
+                            putExtra(android.content.Intent.EXTRA_SUBJECT, "Inventario_Ferreteria.csv")
+                            type = "text/csv"
+                        }
+                        val shareIntent = android.content.Intent.createChooser(sendIntent, "Exportar Inventario a Excel")
+                        context.startActivity(shareIntent)
+                    },
                     onResetDemoData = { viewModel.resetDemoData() }
                 )
             }

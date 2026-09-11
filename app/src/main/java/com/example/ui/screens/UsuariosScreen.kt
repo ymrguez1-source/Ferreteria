@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -80,6 +81,8 @@ fun UsuariosScreen(
     onCreateUser: (username: String, pass: String, role: String) -> Unit,
     onDeleteUser: (Long) -> Unit,
     onActivateLicense: (String) -> Boolean,
+    onDeactivateLicense: () -> Unit = {},
+    onExportExcel: () -> Unit = {},
     onResetDemoData: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -270,6 +273,66 @@ fun UsuariosScreen(
                         ) {
                             Text("Activar")
                         }
+                    }
+
+                    if (isLicenseActive) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Button(
+                            onClick = onDeactivateLicense,
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = CrimsonDanger.copy(alpha = 0.15f),
+                                contentColor = CrimsonDanger
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Bloquear Sistema (Probar Pantalla de Bloqueo)", fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Excel Export / Import Section
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Share, contentDescription = null, tint = Color(0xFF107C41))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Exportación a Excel",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "Exporta el catálogo completo de productos con stock, precios y costos en formato compatible con Microsoft Excel (CSV UTF-8).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Button(
+                        onClick = onExportExcel,
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF107C41),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Exportar Inventario a Excel (CSV)")
                     }
                 }
             }
