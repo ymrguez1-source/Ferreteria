@@ -339,15 +339,48 @@ fun FerreteriaApp(viewModel: FerreteriaViewModel) {
                     onActivateLicense = { key -> viewModel.activateLicense(key) },
                     onDeactivateLicense = { viewModel.deactivateLicense() },
                     onExportExcel = {
-                        val xlsContent = viewModel.generateProductsExcelWorkbook()
-                        val sendIntent = android.content.Intent().apply {
-                            action = android.content.Intent.ACTION_SEND
-                            putExtra(android.content.Intent.EXTRA_TEXT, xlsContent)
-                            putExtra(android.content.Intent.EXTRA_SUBJECT, "Inventario_Ferreteria.xls")
-                            type = "application/vnd.ms-excel"
+                        try {
+                            val exportDir = java.io.File(context.cacheDir, "exports")
+                            exportDir.mkdirs()
+                            val file = java.io.File(exportDir, "Inventario_Ferreteria.xlsx")
+                            file.writeBytes(viewModel.generateProductsXlsxBytes())
+                            val uri = androidx.core.content.FileProvider.getUriForFile(
+                                context,
+                                "${context.packageName}.fileprovider",
+                                file
+                            )
+                            val sendIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            val shareIntent = android.content.Intent.createChooser(sendIntent, "Abrir con Excel (.xlsx)")
+                            context.startActivity(shareIntent)
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(context, "Error exportando XLSX: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
                         }
-                        val shareIntent = android.content.Intent.createChooser(sendIntent, "Exportar Inventario a Excel (.xls)")
-                        context.startActivity(shareIntent)
+                    },
+                    onExportCsv = {
+                        try {
+                            val exportDir = java.io.File(context.cacheDir, "exports")
+                            exportDir.mkdirs()
+                            val file = java.io.File(exportDir, "Inventario_Ferreteria.csv")
+                            file.writeText(viewModel.generateProductsExcelCsv(), Charsets.UTF_8)
+                            val uri = androidx.core.content.FileProvider.getUriForFile(
+                                context,
+                                "${context.packageName}.fileprovider",
+                                file
+                            )
+                            val sendIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "text/csv"
+                                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            val shareIntent = android.content.Intent.createChooser(sendIntent, "Abrir con Excel (.csv)")
+                            context.startActivity(shareIntent)
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(context, "Error exportando CSV: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                        }
                     },
                     onResetDemoData = { viewModel.resetDemoData() }
                 )

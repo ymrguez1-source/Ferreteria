@@ -84,6 +84,7 @@ fun UsuariosScreen(
     onActivateLicense: (String) -> Boolean,
     onDeactivateLicense: () -> Unit = {},
     onExportExcel: () -> Unit = {},
+    onExportCsv: () -> Unit = {},
     onResetDemoData: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -339,23 +340,38 @@ fun UsuariosScreen(
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
-                        text = "Genera y exporta el catálogo completo de productos con stock, costos y precios en formato nativo de libro de trabajo Microsoft Excel (.xls).",
+                        text = "Genera y exporta el catálogo completo de productos con stock, costos y precios en formato nativo moderno de Microsoft Excel (.xlsx) o formato delimitado (.csv) para abrir directamente sin errores.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Button(
-                        onClick = onExportExcel,
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF107C41),
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Exportar Inventario a Excel (.xls)")
+                        Button(
+                            onClick = onExportExcel,
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF107C41),
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Excel (.xlsx)", fontSize = 13.sp)
+                        }
+
+                        androidx.compose.material3.OutlinedButton(
+                            onClick = onExportCsv,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Excel (.csv)", fontSize = 13.sp)
+                        }
                     }
                 }
             }

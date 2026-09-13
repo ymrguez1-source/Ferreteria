@@ -957,20 +957,21 @@
         </div>
 
         <div class="card">
-          <div class="card-title">📊 Documentos en Formato Excel (.xls)</div>
+          <div class="card-title">📊 Documentos en Formato Excel (.xlsx / .csv)</div>
           <p style="font-size: 0.8rem; color: var(--outline); margin-bottom: 12px;">
-            Todos los documentos se guardan y descargan directamente en formato de <strong>Libro de Microsoft Excel (.xls)</strong> con estilos, columnas formateadas, valores numéricos y tablas organizadas.
+            Generación y descarga nativa en formato de <strong>Libro de Microsoft Excel (.xlsx)</strong> y formato delimitado (.csv con UTF-8 BOM) para abrir directamente en Microsoft Excel o Google Sheets sin errores de lectura.
           </p>
           <div class="grid-2">
-            <button class="btn btn-excel btn-sm" onclick="exportInventoryToExcel()">📊 Inventario en Excel (.xls)</button>
-            <button class="btn btn-excel-light btn-sm" onclick="openModal('modal-excel-import')">📥 Importar Excel</button>
+            <button class="btn btn-excel btn-sm" onclick="exportInventoryToExcel('xlsx')">📊 Inventario (.xlsx)</button>
+            <button class="btn btn-excel-light btn-sm" onclick="exportInventoryToExcel('csv')">📑 Inventario (.csv)</button>
           </div>
           <div class="grid-2" style="margin-top: 8px;">
-            <button class="btn btn-excel btn-sm" onclick="exportSalesToExcel()">📊 Ventas en Excel (.xls)</button>
-            <button class="btn btn-excel btn-sm" onclick="exportMermasToExcel()">📊 Mermas en Excel (.xls)</button>
+            <button class="btn btn-excel btn-sm" onclick="exportSalesToExcel('xlsx')">📊 Ventas (.xlsx)</button>
+            <button class="btn btn-excel btn-sm" onclick="exportMermasToExcel('xlsx')">📊 Mermas (.xlsx)</button>
           </div>
-          <div style="margin-top: 8px;">
-            <button class="btn btn-excel-light btn-sm btn-block" onclick="exportReportToExcel()">📑 Informe Financiero en Excel (.xls)</button>
+          <div class="grid-2" style="margin-top: 8px;">
+            <button class="btn btn-excel-light btn-sm" onclick="exportReportToExcel('xlsx')">📑 Informe (.xlsx)</button>
+            <button class="btn btn-excel-light btn-sm" onclick="openModal('modal-excel-import')">📥 Importar Excel</button>
           </div>
         </div>
 
@@ -1503,7 +1504,7 @@
     }
 
     /* ==========================================================================
-       EXCEL WORKBOOK ENGINE (FORMATO NATIVO .XLS / SPREADSHEETML PARA MICROSOFT EXCEL)
+       EXCEL & CSV ENGINE (FORMATO NATIVO OPENXML .XLSX Y CSV COMPATIBLE CON MICROSOFT EXCEL)
        ========================================================================== */
 
     function escapeXml(str) {
@@ -1516,118 +1517,257 @@
         .replace(/'/g, '&apos;');
     }
 
-    function generateExcelWorkbookXml(sheetName, headers, rows, title) {
-      let xml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
-        '<?mso-application progid="Excel.Sheet"?>\n' +
-        '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"\n' +
-        ' xmlns:o="urn:schemas-microsoft-com:office:office"\n' +
-        ' xmlns:x="urn:schemas-microsoft-com:office:excel"\n' +
-        ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"\n' +
-        ' xmlns:html="http://www.w3.org/TR/REC-html40">\n' +
-        ' <Styles>\n' +
-        '  <Style ss:ID="Default" ss:Name="Normal">\n' +
-        '   <Alignment ss:Vertical="Center"/>\n' +
-        '   <Borders/>\n' +
-        '   <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#1A1A1A"/>\n' +
-        '   <Interior/>\n' +
-        '   <NumberFormat/>\n' +
-        '   <Protection/>\n' +
-        '  </Style>\n' +
-        '  <Style ss:ID="TitleStyle">\n' +
-        '   <Font ss:FontName="Calibri" ss:Size="14" ss:Bold="1" ss:Color="#FFFFFF"/>\n' +
-        '   <Interior ss:Color="#107C41" ss:Pattern="Solid"/>\n' +
-        '   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>\n' +
-        '  </Style>\n' +
-        '  <Style ss:ID="HeaderStyle">\n' +
-        '   <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/>\n' +
-        '   <Interior ss:Color="#107C41" ss:Pattern="Solid"/>\n' +
-        '   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>\n' +
-        '   <Borders>\n' +
-        '    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#0B5F30"/>\n' +
-        '    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#0B5F30"/>\n' +
-        '    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#0B5F30"/>\n' +
-        '    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#0B5F30"/>\n' +
-        '   </Borders>\n' +
-        '  </Style>\n' +
-        '  <Style ss:ID="DataCell">\n' +
-        '   <Borders>\n' +
-        '    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#DCDCDC"/>\n' +
-        '    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#DCDCDC"/>\n' +
-        '    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#DCDCDC"/>\n' +
-        '    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#DCDCDC"/>\n' +
-        '   </Borders>\n' +
-        '  </Style>\n' +
-        '  <Style ss:ID="NumberCell">\n' +
-        '   <Alignment ss:Horizontal="Right"/>\n' +
-        '   <Borders>\n' +
-        '    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#DCDCDC"/>\n' +
-        '    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#DCDCDC"/>\n' +
-        '    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#DCDCDC"/>\n' +
-        '    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#DCDCDC"/>\n' +
-        '   </Borders>\n' +
-        '   <NumberFormat ss:Format="#,##0.00"/>\n' +
-        '  </Style>\n' +
-        '  <Style ss:ID="CurrencyCell">\n' +
-        '   <Alignment ss:Horizontal="Right"/>\n' +
-        '   <Borders>\n' +
-        '    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#DCDCDC"/>\n' +
-        '    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#DCDCDC"/>\n' +
-        '    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#DCDCDC"/>\n' +
-        '    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#DCDCDC"/>\n' +
-        '   </Borders>\n' +
-        '   <NumberFormat ss:Format="$#,##0.00"/>\n' +
-        '  </Style>\n' +
-        ' </Styles>\n' +
-        ` <Worksheet ss:Name="${escapeXml(sheetName)}">\n` +
-        '  <Table ss:DefaultRowHeight="20">\n';
-
-      if (title) {
-        xml += '   <Row ss:Height="30">\n' +
-          `    <Cell ss:MergeAcross="${headers.length - 1}" ss:StyleID="TitleStyle"><Data ss:Type="String">${escapeXml(title)}</Data></Cell>\n` +
-          '   </Row>\n' +
-          '   <Row ss:Height="10"></Row>\n';
+    const CRC_TABLE = (function() {
+      const c = new Uint32Array(256);
+      for (let n = 0; n < 256; n++) {
+        let u = n;
+        for (let k = 0; k < 8; k++) {
+          u = ((u & 1) ? (0xEDB88320 ^ (u >>> 1)) : (u >>> 1));
+        }
+        c[n] = u >>> 0;
       }
+      return c;
+    })();
 
-      // Header row
-      xml += '   <Row ss:Height="24">\n';
-      headers.forEach(h => {
-        xml += `    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">${escapeXml(h)}</Data></Cell>\n`;
-      });
-      xml += '   </Row>\n';
-
-      // Rows
-      rows.forEach(r => {
-        xml += '   <Row>\n';
-        r.forEach(cell => {
-          if (typeof cell === 'number') {
-            xml += `    <Cell ss:StyleID="NumberCell"><Data ss:Type="Number">${cell}</Data></Cell>\n`;
-          } else if (cell && typeof cell === 'object' && cell.isCurrency) {
-            xml += `    <Cell ss:StyleID="CurrencyCell"><Data ss:Type="Number">${cell.value}</Data></Cell>\n`;
-          } else {
-            xml += `    <Cell ss:StyleID="DataCell"><Data ss:Type="String">${escapeXml(cell ?? '')}</Data></Cell>\n`;
-          }
-        });
-        xml += '   </Row>\n';
-      });
-
-      xml += '  </Table>\n </Worksheet>\n</Workbook>';
-      return xml;
+    function crc32(uint8Array) {
+      let crc = 0 ^ (-1);
+      for (let i = 0; i < uint8Array.length; i++) {
+        crc = (crc >>> 8) ^ CRC_TABLE[(crc ^ uint8Array[i]) & 0xFF];
+      }
+      return (crc ^ (-1)) >>> 0;
     }
 
-    // Helper para descargar en formato Libro de Excel (.xls)
-    function downloadExcelWorkbook(xmlContent, filename) {
-      const blob = new Blob([xmlContent], { type: "application/vnd.ms-excel;charset=utf-8;" });
+    function createZipBlob(files) {
+      const encoder = new TextEncoder();
+      const parts = [];
+      const cdParts = [];
+      let offset = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const nameBytes = encoder.encode(file.name);
+        const dataBytes = (file.data instanceof Uint8Array) ? file.data : encoder.encode(file.data);
+        const crc = crc32(dataBytes);
+        const size = dataBytes.length;
+
+        // Local header (30 bytes)
+        const lh = new Uint8Array(30);
+        const dvLh = new DataView(lh.buffer);
+        dvLh.setUint32(0, 0x04034b50, true);
+        dvLh.setUint16(4, 20, true); // min version
+        dvLh.setUint16(6, 0x0800, true); // UTF-8 flag
+        dvLh.setUint16(8, 0, true); // store
+        dvLh.setUint16(10, 0x5000, true); // time
+        dvLh.setUint16(12, 0x5000, true); // date
+        dvLh.setUint32(14, crc, true);
+        dvLh.setUint32(18, size, true);
+        dvLh.setUint32(22, size, true);
+        dvLh.setUint16(26, nameBytes.length, true);
+        dvLh.setUint16(28, 0, true); // extra len
+
+        parts.push(lh, nameBytes, dataBytes);
+
+        // Central directory entry (46 bytes)
+        const cd = new Uint8Array(46);
+        const dvCd = new DataView(cd.buffer);
+        dvCd.setUint32(0, 0x02014b50, true);
+        dvCd.setUint16(4, 20, true); // ver made by
+        dvCd.setUint16(6, 20, true); // ver needed
+        dvCd.setUint16(8, 0x0800, true); // UTF-8 flag
+        dvCd.setUint16(10, 0, true); // store
+        dvCd.setUint16(12, 0x5000, true); // time
+        dvCd.setUint16(14, 0x5000, true); // date
+        dvCd.setUint32(16, crc, true);
+        dvCd.setUint32(20, size, true);
+        dvCd.setUint32(24, size, true);
+        dvCd.setUint16(28, nameBytes.length, true);
+        dvCd.setUint16(30, 0, true); // extra len
+        dvCd.setUint16(32, 0, true); // comment len
+        dvCd.setUint16(34, 0, true); // disk num
+        dvCd.setUint16(36, 0, true); // int attr
+        dvCd.setUint32(38, 0, true); // ext attr
+        dvCd.setUint32(42, offset, true); // lh offset
+
+        cdParts.push(cd, nameBytes);
+
+        offset += 30 + nameBytes.length + size;
+      }
+
+      const cdOffset = offset;
+      let cdSize = 0;
+      for (let i = 0; i < cdParts.length; i++) cdSize += cdParts[i].length;
+
+      // End of central directory (22 bytes)
+      const eocd = new Uint8Array(22);
+      const dvEocd = new DataView(eocd.buffer);
+      dvEocd.setUint32(0, 0x06054b50, true);
+      dvEocd.setUint16(4, 0, true); // disk
+      dvEocd.setUint16(6, 0, true); // cd disk
+      dvEocd.setUint16(8, files.length, true);
+      dvEocd.setUint16(10, files.length, true);
+      dvEocd.setUint32(12, cdSize, true);
+      dvEocd.setUint32(16, cdOffset, true);
+      dvEocd.setUint16(20, 0, true); // comment len
+
+      return new Blob([...parts, ...cdParts, eocd], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      });
+    }
+
+    function getColLetter(colIdx) {
+      let letter = "";
+      let temp = colIdx;
+      while (temp > 0) {
+        let mod = (temp - 1) % 26;
+        letter = String.fromCharCode(65 + mod) + letter;
+        temp = Math.floor((temp - mod) / 26);
+      }
+      return letter;
+    }
+
+    function buildXlsxBlob(sheetName, headers, rows) {
+      let sheetDataXml = "";
+      // Header row
+      let r1 = "";
+      for (let c = 0; c < headers.length; c++) {
+        const colRef = getColLetter(c + 1) + "1";
+        r1 += `<c r="${colRef}" s="1" t="inlineStr"><is><t>${escapeXml(headers[c])}</t></is></c>`;
+      }
+      sheetDataXml += `<row r="1" ht="24" customHeight="1">${r1}</row>`;
+
+      // Data rows
+      for (let r = 0; r < rows.length; r++) {
+        const rowNum = r + 2;
+        let rXml = "";
+        const row = rows[r];
+        for (let c = 0; c < row.length; c++) {
+          const colRef = getColLetter(c + 1) + rowNum;
+          const cell = row[c];
+          if (typeof cell === "number") {
+            rXml += `<c r="${colRef}"><v>${cell}</v></c>`;
+          } else if (cell && typeof cell === "object" && cell.isCurrency) {
+            const num = (typeof cell.value === 'number') ? cell.value : (parseFloat(cell.value) || 0);
+            rXml += `<c r="${colRef}" s="2"><v>${num}</v></c>`;
+          } else {
+            rXml += `<c r="${colRef}" t="inlineStr"><is><t>${escapeXml(cell ?? '')}</t></is></c>`;
+          }
+        }
+        sheetDataXml += `<row r="${rowNum}">${rXml}</row>`;
+      }
+
+      const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`;
+
+      const pkgRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+
+      const safeSheetName = (sheetName || "Hoja1").replace(/[:\\/?*\[\]]/g, "_").slice(0, 31);
+      const wbXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    <sheet name="${escapeXml(safeSheetName)}" sheetId="1" r:id="rId1"/>
+  </sheets>
+</workbook>`;
+
+      const wbRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+      const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <numFmts count="1">
+    <numFmt numFmtId="164" formatCode="&quot;$&quot;#,##0.00"/>
+  </numFmts>
+  <fonts count="2">
+    <font><sz val="11"/><name val="Calibri"/></font>
+    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+  </fonts>
+  <fills count="3">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF107C41"/></patternFill></fill>
+  </fills>
+  <borders count="2">
+    <border><left/><right/><top/><bottom/></border>
+    <border>
+      <left style="thin"><color rgb="FFD4D4D4"/></left>
+      <right style="thin"><color rgb="FFD4D4D4"/></right>
+      <top style="thin"><color rgb="FFD4D4D4"/></top>
+      <bottom style="thin"><color rgb="FFD4D4D4"/></bottom>
+    </border>
+  </borders>
+  <cellStyleXfs count="1">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+  </cellStyleXfs>
+  <cellXfs count="3">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
+      <alignment horizontal="center" vertical="center"/>
+    </xf>
+    <xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1">
+      <alignment horizontal="right" vertical="center"/>
+    </xf>
+  </cellXfs>
+</styleSheet>`;
+
+      const wsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetViews><sheetView tabSelected="1" workbookViewId="0"/></sheetViews>
+  <sheetFormatPr defaultRowHeight="20"/>
+  <sheetData>${sheetDataXml}</sheetData>
+</worksheet>`;
+
+      return createZipBlob([
+        { name: "[Content_Types].xml", data: contentTypes },
+        { name: "_rels/.rels", data: pkgRels },
+        { name: "xl/workbook.xml", data: wbXml },
+        { name: "xl/_rels/workbook.xml.rels", data: wbRels },
+        { name: "xl/styles.xml", data: stylesXml },
+        { name: "xl/worksheets/sheet1.xml", data: wsXml }
+      ]);
+    }
+
+    function generateCsvText(headers, rows) {
+      let csv = "sep=;\r\n"; // Hint nativo para que Microsoft Excel abra automáticamente con columnas separadas
+      csv += headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(";") + "\r\n";
+      rows.forEach(r => {
+        csv += r.map(c => {
+          if (c === null || c === undefined) return '""';
+          if (typeof c === 'number') return c.toString();
+          if (typeof c === 'object' && c.isCurrency) return Number(c.value).toFixed(2);
+          return `"${String(c).replace(/"/g, '""')}"`;
+        }).join(";") + "\r\n";
+      });
+      return csv;
+    }
+
+    function downloadBlob(blob, filename) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", filename);
+      link.href = url;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
-    function exportInventoryToExcel() {
+    function downloadExcelFile(csvContent, filename) {
+      const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+      downloadBlob(blob, filename);
+    }
+
+    function exportInventoryToExcel(format = 'xlsx') {
       if (state.products.length === 0) {
         alert('No hay productos en el inventario para exportar.');
         return;
@@ -1665,11 +1805,16 @@
       });
 
       const todayStr = new Date().toISOString().slice(0, 10);
-      const xml = generateExcelWorkbookXml("Inventario", headers, rows, `INVENTARIO GENERAL DE FERRETERÍA - ${todayStr}`);
-      downloadExcelWorkbook(xml, `Inventario_Ferreteria_${todayStr}.xls`);
+      if (format === 'csv') {
+        const csv = generateCsvText(headers, rows);
+        downloadExcelFile(csv, `Inventario_Ferreteria_${todayStr}.csv`);
+      } else {
+        const blob = buildXlsxBlob("Inventario", headers, rows);
+        downloadBlob(blob, `Inventario_Ferreteria_${todayStr}.xlsx`);
+      }
     }
 
-    function exportSalesToExcel() {
+    function exportSalesToExcel(format = 'xlsx') {
       if (state.sales.length === 0) {
         alert('No hay ventas registradas para exportar.');
         return;
@@ -1705,11 +1850,16 @@
       });
 
       const todayStr = new Date().toISOString().slice(0, 10);
-      const xml = generateExcelWorkbookXml("Ventas", headers, rows, `REGISTRO DE VENTAS - FERRETERÍA (${todayStr})`);
-      downloadExcelWorkbook(xml, `Ventas_Ferreteria_${todayStr}.xls`);
+      if (format === 'csv') {
+        const csv = generateCsvText(headers, rows);
+        downloadExcelFile(csv, `Ventas_Ferreteria_${todayStr}.csv`);
+      } else {
+        const blob = buildXlsxBlob("Ventas", headers, rows);
+        downloadBlob(blob, `Ventas_Ferreteria_${todayStr}.xlsx`);
+      }
     }
 
-    function exportMermasToExcel() {
+    function exportMermasToExcel(format = 'xlsx') {
       if (state.mermas.length === 0) {
         alert('No hay registro de mermas para exportar.');
         return;
@@ -1741,11 +1891,16 @@
       });
 
       const todayStr = new Date().toISOString().slice(0, 10);
-      const xml = generateExcelWorkbookXml("Mermas", headers, rows, `CONTROL DE MERMAS Y PÉRDIDAS - FERRETERÍA (${todayStr})`);
-      downloadExcelWorkbook(xml, `Mermas_Ferreteria_${todayStr}.xls`);
+      if (format === 'csv') {
+        const csv = generateCsvText(headers, rows);
+        downloadExcelFile(csv, `Mermas_Ferreteria_${todayStr}.csv`);
+      } else {
+        const blob = buildXlsxBlob("Mermas", headers, rows);
+        downloadBlob(blob, `Mermas_Ferreteria_${todayStr}.xlsx`);
+      }
     }
 
-    function exportReportToExcel() {
+    function exportReportToExcel(format = 'xlsx') {
       const period = document.getElementById('report-period').value;
       const now = Date.now();
       let startTime = 0;
@@ -1770,8 +1925,8 @@
         ["Utilidad Bruta en Ventas", "-", "-", { isCurrency: true, value: gananciaBruta }],
         ["Pérdidas en Mermas y Roturas", `${fMermas.length} incidentes`, { isCurrency: true, value: perdidasMermas }, "-"],
         ["UTILIDAD NETA REAL", "-", "-", { isCurrency: true, value: gananciaNeta }],
-        ["-", "-", "-", "-"],
-        ["TOP PRODUCTOS VENDIDOS", "-", "-", "-"]
+        ["---", "---", "---", "---"],
+        ["TOP PRODUCTOS VENDIDOS", "", "", ""]
       ];
 
       const ranking = {};
@@ -1787,8 +1942,13 @@
       });
 
       const todayStr = new Date().toISOString().slice(0, 10);
-      const xml = generateExcelWorkbookXml("Informe", headers, rows, `INFORME FINANCIERO Y RENTABILIDAD - ${todayStr}`);
-      downloadExcelWorkbook(xml, `Informe_Financiero_Ferreteria_${todayStr}.xls`);
+      if (format === 'csv') {
+        const csv = generateCsvText(headers, rows);
+        downloadExcelFile(csv, `Informe_Financiero_Ferreteria_${todayStr}.csv`);
+      } else {
+        const blob = buildXlsxBlob("Informe", headers, rows);
+        downloadBlob(blob, `Informe_Financiero_Ferreteria_${todayStr}.xlsx`);
+      }
     }
 
     function downloadExcelTemplate() {

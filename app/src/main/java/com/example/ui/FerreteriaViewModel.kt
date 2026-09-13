@@ -400,91 +400,149 @@ class FerreteriaViewModel(application: Application) : AndroidViewModel(applicati
         showSnackbar("Sistema bloqueado. Se requiere activación autorizada.")
     }
 
-    fun generateProductsExcelWorkbook(): String {
-        val sb = StringBuilder()
-        sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
-        sb.append("<?mso-application progid=\"Excel.Sheet\"?>\n")
-        sb.append("<Workbook xmlns=\"urn:schemas-microsoft-com:office:spreadsheet\"\n")
-        sb.append(" xmlns:o=\"urn:schemas-microsoft-com:office:office\"\n")
-        sb.append(" xmlns:x=\"urn:schemas-microsoft-com:office:excel\"\n")
-        sb.append(" xmlns:ss=\"urn:schemas-microsoft-com:office:spreadsheet\"\n")
-        sb.append(" xmlns:html=\"http://www.w3.org/TR/REC-html40\">\n")
-        sb.append(" <Styles>\n")
-        sb.append("  <Style ss:ID=\"Default\" ss:Name=\"Normal\">\n")
-        sb.append("   <Alignment ss:Vertical=\"Center\"/>\n")
-        sb.append("   <Font ss:FontName=\"Calibri\" ss:Size=\"11\" ss:Color=\"#1A1A1A\"/>\n")
-        sb.append("  </Style>\n")
-        sb.append("  <Style ss:ID=\"HeaderStyle\">\n")
-        sb.append("   <Font ss:FontName=\"Calibri\" ss:Size=\"11\" ss:Bold=\"1\" ss:Color=\"#FFFFFF\"/>\n")
-        sb.append("   <Interior ss:Color=\"#107C41\" ss:Pattern=\"Solid\"/>\n")
-        sb.append("   <Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\"/>\n")
-        sb.append("   <Borders>\n")
-        sb.append("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#0B5F30\"/>\n")
-        sb.append("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#0B5F30\"/>\n")
-        sb.append("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#0B5F30\"/>\n")
-        sb.append("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#0B5F30\"/>\n")
-        sb.append("   </Borders>\n")
-        sb.append("  </Style>\n")
-        sb.append("  <Style ss:ID=\"DataCell\">\n")
-        sb.append("   <Borders>\n")
-        sb.append("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#DCDCDC\"/>\n")
-        sb.append("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#DCDCDC\"/>\n")
-        sb.append("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#DCDCDC\"/>\n")
-        sb.append("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#DCDCDC\"/>\n")
-        sb.append("   </Borders>\n")
-        sb.append("  </Style>\n")
-        sb.append("  <Style ss:ID=\"CurrencyCell\">\n")
-        sb.append("   <Alignment ss:Horizontal=\"Right\"/>\n")
-        sb.append("   <NumberFormat ss:Format=\"$#,##0.00\"/>\n")
-        sb.append("   <Borders>\n")
-        sb.append("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#DCDCDC\"/>\n")
-        sb.append("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#DCDCDC\"/>\n")
-        sb.append("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#DCDCDC\"/>\n")
-        sb.append("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#DCDCDC\"/>\n")
-        sb.append("   </Borders>\n")
-        sb.append("  </Style>\n")
-        sb.append(" </Styles>\n")
-        sb.append(" <Worksheet ss:Name=\"Inventario\">\n")
-        sb.append("  <Table ss:DefaultRowHeight=\"20\">\n")
+    fun generateProductsXlsxBytes(): ByteArray {
+        val baos = java.io.ByteArrayOutputStream()
+        val zos = java.util.zip.ZipOutputStream(baos)
+
+        fun addZipEntry(name: String, content: String) {
+            val entry = java.util.zip.ZipEntry(name)
+            zos.putNextEntry(entry)
+            zos.write(content.toByteArray(Charsets.UTF_8))
+            zos.closeEntry()
+        }
+
+        // 1. [Content_Types].xml
+        addZipEntry("[Content_Types].xml", """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>""")
+
+        // 2. _rels/.rels
+        addZipEntry("_rels/.rels", """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>""")
+
+        // 3. xl/workbook.xml
+        addZipEntry("xl/workbook.xml", """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    <sheet name="Inventario" sheetId="1" r:id="rId1"/>
+  </sheets>
+</workbook>""")
+
+        // 4. xl/_rels/workbook.xml.rels
+        addZipEntry("xl/_rels/workbook.xml.rels", """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>""")
+
+        // 5. xl/styles.xml
+        addZipEntry("xl/styles.xml", """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <numFmts count="1">
+    <numFmt numFmtId="164" formatCode="&quot;$&quot;#,##0.00"/>
+  </numFmts>
+  <fonts count="2">
+    <font><sz val="11"/><name val="Calibri"/></font>
+    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+  </fonts>
+  <fills count="3">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF107C41"/></patternFill></fill>
+  </fills>
+  <borders count="2">
+    <border><left/><right/><top/><bottom/></border>
+    <border>
+      <left style="thin"><color rgb="FFD4D4D4"/></left>
+      <right style="thin"><color rgb="FFD4D4D4"/></right>
+      <top style="thin"><color rgb="FFD4D4D4"/></top>
+      <bottom style="thin"><color rgb="FFD4D4D4"/></bottom>
+    </border>
+  </borders>
+  <cellStyleXfs count="1">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+  </cellStyleXfs>
+  <cellXfs count="3">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
+      <alignment horizontal="center" vertical="center"/>
+    </xf>
+    <xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1">
+      <alignment horizontal="right" vertical="center"/>
+    </xf>
+  </cellXfs>
+</styleSheet>""")
+
+        // 6. xl/worksheets/sheet1.xml
+        fun colLetter(colIdx: Int): String {
+            var temp = colIdx
+            var res = ""
+            while (temp > 0) {
+                val mod = (temp - 1) % 26
+                res = ('A' + mod) + res
+                temp = (temp - mod) / 26
+            }
+            return res
+        }
+        fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
 
         val headers = listOf("Código", "Nombre", "Categoría", "Unidad", "Stock", "Costo ($)", "Precio ($)", "Margen (%)")
-        sb.append("   <Row ss:Height=\"24\">\n")
-        headers.forEach { h ->
-            sb.append("    <Cell ss:StyleID=\"HeaderStyle\"><Data ss:Type=\"String\">$h</Data></Cell>\n")
-        }
-        sb.append("   </Row>\n")
+        val rowsSb = java.lang.StringBuilder()
 
-        products.value.forEach { p ->
+        // Header row
+        rowsSb.append("<row r=\"1\" ht=\"24\" customHeight=\"1\">")
+        headers.forEachIndexed { i, h ->
+            val ref = "${colLetter(i + 1)}1"
+            rowsSb.append("<c r=\"$ref\" s=\"1\" t=\"inlineStr\"><is><t>${esc(h)}</t></is></c>")
+        }
+        rowsSb.append("</row>")
+
+        // Data rows
+        products.value.forEachIndexed { rIdx, p ->
+            val rowNum = rIdx + 2
             val margin = if (p.precioVenta > 0) (((p.precioVenta - p.costoUnitario) / p.precioVenta) * 100).toInt() else 100
-            val escName = p.nombre.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
-            val escCat = p.categoria.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
-            val escUnit = p.unidadMedida.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
-
-            sb.append("   <Row>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"Number\">${p.id}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">$escName</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">$escCat</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">$escUnit</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"Number\">${p.stock}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"CurrencyCell\"><Data ss:Type=\"Number\">${p.costoUnitario}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"CurrencyCell\"><Data ss:Type=\"Number\">${p.precioVenta}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">$margin%</Data></Cell>\n")
-            sb.append("   </Row>\n")
+            rowsSb.append("<row r=\"$rowNum\">")
+            rowsSb.append("<c r=\"${colLetter(1)}$rowNum\"><v>${p.id}</v></c>")
+            rowsSb.append("<c r=\"${colLetter(2)}$rowNum\" t=\"inlineStr\"><is><t>${esc(p.nombre)}</t></is></c>")
+            rowsSb.append("<c r=\"${colLetter(3)}$rowNum\" t=\"inlineStr\"><is><t>${esc(p.categoria)}</t></is></c>")
+            rowsSb.append("<c r=\"${colLetter(4)}$rowNum\" t=\"inlineStr\"><is><t>${esc(p.unidadMedida)}</t></is></c>")
+            rowsSb.append("<c r=\"${colLetter(5)}$rowNum\"><v>${p.stock}</v></c>")
+            rowsSb.append("<c r=\"${colLetter(6)}$rowNum\" s=\"2\"><v>${p.costoUnitario}</v></c>")
+            rowsSb.append("<c r=\"${colLetter(7)}$rowNum\" s=\"2\"><v>${p.precioVenta}</v></c>")
+            rowsSb.append("<c r=\"${colLetter(8)}$rowNum\" t=\"inlineStr\"><is><t>$margin%</t></is></c>")
+            rowsSb.append("</row>")
         }
 
-        sb.append("  </Table>\n")
-        sb.append(" </Worksheet>\n")
-        sb.append("</Workbook>")
-        return sb.toString()
+        addZipEntry("xl/worksheets/sheet1.xml", """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetViews><sheetView tabSelected="1" workbookViewId="0"/></sheetViews>
+  <sheetFormatPr defaultRowHeight="20"/>
+  <sheetData>$rowsSb</sheetData>
+</worksheet>""")
+
+        zos.finish()
+        zos.close()
+        return baos.toByteArray()
     }
 
     fun generateProductsExcelCsv(): String {
         val sb = StringBuilder()
         sb.append('\uFEFF') // BOM for Excel UTF-8
+        sb.append("sep=;\r\n") // Excel explicit separator hint
         sb.append("Código;Nombre;Categoría;Unidad;Stock;Costo Unitario ($);Precio Venta ($);Margen (%)\r\n")
         products.value.forEach { p ->
             val margin = if (p.precioVenta > 0) (((p.precioVenta - p.costoUnitario) / p.precioVenta) * 100).toInt() else 100
-            sb.append("${p.id};\"${p.nombre}\";\"${p.categoria}\";\"${p.unidadMedida}\";${p.stock};${p.costoUnitario};${p.precioVenta};$margin%\r\n")
+            val escName = p.nombre.replace("\"", "\"\"")
+            val escCat = p.categoria.replace("\"", "\"\"")
+            val escUnit = p.unidadMedida.replace("\"", "\"\"")
+            sb.append("${p.id};\"$escName\";\"$escCat\";\"$escUnit\";${p.stock};${p.costoUnitario};${p.precioVenta};$margin%\r\n")
         }
         return sb.toString()
     }
