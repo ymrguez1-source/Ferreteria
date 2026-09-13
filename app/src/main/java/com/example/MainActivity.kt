@@ -100,6 +100,7 @@ fun FerreteriaApp(viewModel: FerreteriaViewModel) {
     val users by viewModel.users.collectAsStateWithLifecycle()
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val isLicenseActive by viewModel.isLicenseActive.collectAsStateWithLifecycle()
+    val licenseInfo by viewModel.licenseInfo.collectAsStateWithLifecycle()
     val deviceId by viewModel.deviceId.collectAsStateWithLifecycle()
     val snackbarMessage by viewModel.snackbarMessage.collectAsStateWithLifecycle()
     val searchQuery by viewModel.productSearchQuery.collectAsStateWithLifecycle()
@@ -330,6 +331,7 @@ fun FerreteriaApp(viewModel: FerreteriaViewModel) {
                     users = users,
                     deviceId = deviceId,
                     isLicenseActive = isLicenseActive,
+                    licenseInfo = licenseInfo,
                     onLogin = { u, p -> viewModel.login(u, p) },
                     onLogout = { viewModel.logout() },
                     onCreateUser = { u, p, r -> viewModel.createUser(u, p, r) },
@@ -337,14 +339,14 @@ fun FerreteriaApp(viewModel: FerreteriaViewModel) {
                     onActivateLicense = { key -> viewModel.activateLicense(key) },
                     onDeactivateLicense = { viewModel.deactivateLicense() },
                     onExportExcel = {
-                        val csv = viewModel.generateProductsExcelCsv()
+                        val xlsContent = viewModel.generateProductsExcelWorkbook()
                         val sendIntent = android.content.Intent().apply {
                             action = android.content.Intent.ACTION_SEND
-                            putExtra(android.content.Intent.EXTRA_TEXT, csv)
-                            putExtra(android.content.Intent.EXTRA_SUBJECT, "Inventario_Ferreteria.csv")
-                            type = "text/csv"
+                            putExtra(android.content.Intent.EXTRA_TEXT, xlsContent)
+                            putExtra(android.content.Intent.EXTRA_SUBJECT, "Inventario_Ferreteria.xls")
+                            type = "application/vnd.ms-excel"
                         }
-                        val shareIntent = android.content.Intent.createChooser(sendIntent, "Exportar Inventario a Excel")
+                        val shareIntent = android.content.Intent.createChooser(sendIntent, "Exportar Inventario a Excel (.xls)")
                         context.startActivity(shareIntent)
                     },
                     onResetDemoData = { viewModel.resetDemoData() }

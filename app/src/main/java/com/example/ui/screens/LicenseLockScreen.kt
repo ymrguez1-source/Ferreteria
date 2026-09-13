@@ -163,9 +163,9 @@ fun LicenseLockScreen(
 
                 OutlinedTextField(
                     value = keyInput,
-                    onValueChange = { keyInput = it.uppercase() },
+                    onValueChange = { keyInput = it.trim() },
                     label = { Text("Clave de Activación") },
-                    placeholder = { Text("Ej: FERR-2026-PRO") },
+                    placeholder = { Text("Pega la clave autorizada") },
                     leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null, tint = TerracottaPrimary) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -189,21 +189,17 @@ fun LicenseLockScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Quick Demo Key Helper
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = TerracottaPrimary.copy(alpha = 0.08f),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { keyInput = "FERR-2026-PRO" }
-                        .padding(8.dp)
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "💡 Toca aquí para rellenar la clave maestra: FERR-2026-PRO",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TerracottaDark,
+                        text = "📌 Copia el ID de este terminal y genérala con el sistema de licencias del proveedor. No existen claves maestras.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.padding(12.dp)
                     )
                 }
             }

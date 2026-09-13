@@ -33,8 +33,11 @@ class FerreteriaViewModel(application: Application) : AndroidViewModel(applicati
     private val _currentUser = MutableStateFlow<UserEntity?>(null)
     val currentUser: StateFlow<UserEntity?> = _currentUser.asStateFlow()
 
-    private val _isLicenseActive = MutableStateFlow(true)
+    private val _isLicenseActive = MutableStateFlow(false)
     val isLicenseActive: StateFlow<Boolean> = _isLicenseActive.asStateFlow()
+
+    private val _licenseInfo = MutableStateFlow<String?>(null)
+    val licenseInfo: StateFlow<String?> = _licenseInfo.asStateFlow()
 
     private val _deviceId = MutableStateFlow("")
     val deviceId: StateFlow<String> = _deviceId.asStateFlow()
@@ -83,17 +86,33 @@ class FerreteriaViewModel(application: Application) : AndroidViewModel(applicati
             emptyList()
         )
 
-        // Init Device ID
+        // Init Device ID (clean uppercase format compatible with generator)
         var savedDevId = prefs.getString("device_id", null)
         if (savedDevId.isNullOrEmpty()) {
-            savedDevId = "FERR-" + UUID.randomUUID().toString().substring(0, 8).uppercase()
+            val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+            val randomStr = (1..12).map { chars.random() }.joinToString("")
+            savedDevId = "FERR-$randomStr"
             prefs.edit().putString("device_id", savedDevId).apply()
         }
         _deviceId.value = savedDevId
 
-        // License check (default active for instant usability, customizable in Settings)
-        val isLic = prefs.getBoolean("license_active", true)
-        _isLicenseActive.value = isLic
+        // License check with annexed validation algorithm (NO MASTER KEYS)
+        val storedKey = prefs.getString("license_key", null)
+        if (!storedKey.isNullOrBlank()) {
+            val res = validateAnnexedLicense(savedDevId, storedKey)
+            if (res.first && res.second is LicenseData) {
+                val data = res.second as LicenseData
+                _isLicenseActive.value = true
+                _licenseInfo.value = "${data.client} (${data.type.uppercase()}) - Vence: ${data.expiry}"
+            } else {
+                _isLicenseActive.value = false
+                _licenseInfo.value = null
+                prefs.edit().putBoolean("license_active", false).apply()
+            }
+        } else {
+            _isLicenseActive.value = false
+            _licenseInfo.value = null
+        }
 
         // Auto login default admin if not set
         viewModelScope.launch {
@@ -266,23 +285,197 @@ class FerreteriaViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    data class LicenseData(
+        val deviceId: String,
+        val client: String,
+        val type: String,
+        val start: String,
+        val expiry: String,
+        val duration: Int,
+        val id: String
+    )
+
+    fun validateAnnexedLicense(currentDeviceId: String, rawKey: String): Pair<Boolean, Any?> {
+        try {
+            val cleanKey = rawKey.trim()
+            if (cleanKey.length < 15) {
+                return Pair(false, "Clave de licencia inválida (longitud insuficiente)")
+            }
+
+            val receivedSig = cleanKey.substring(4, 14)
+            val encoded = cleanKey.substring(14)
+            val jsonBytes = android.util.Base64.decode(encoded, android.util.Base64.DEFAULT)
+            val jsonStr = String(jsonBytes, Charsets.UTF_8)
+            val json = org.json.JSONObject(jsonStr)
+
+            val devId = json.optString("deviceId")
+            val client = json.optString("client")
+            val type = json.optString("type")
+            val start = json.optString("start")
+            val expiry = json.optString("expiry")
+            val duration = json.optInt("duration", 0)
+            val id = json.optString("id")
+
+            val signString = "$devId|$client|$type|$start|$expiry|$duration|$id"
+
+            // Compute JS 32-bit integer hash: ((hash shl 5) - hash) + charCode
+            var hash = 0
+            for (ch in signString) {
+                val code = ch.code
+                hash = ((hash shl 5) - hash) + code
+            }
+
+            val absHash: Long = if (hash < 0) {
+                if (hash == Int.MIN_VALUE) 2147483648L else (-hash).toLong()
+            } else {
+                hash.toLong()
+            }
+            val expectedSig = java.lang.Long.toString(absHash, 36).uppercase().padStart(10, '0')
+
+            if (expectedSig != receivedSig) {
+                return Pair(false, "Firma digital de licencia inválida")
+            }
+
+            if (devId != currentDeviceId) {
+                return Pair(false, "El ID de dispositivo ($devId) no coincide con este terminal ($currentDeviceId)")
+            }
+
+            // Expiry check
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT)
+            val expiryDate = sdf.parse(expiry.substring(0, 10))
+            val startDate = sdf.parse(start.substring(0, 10))
+            val todayCal = java.util.Calendar.getInstance().apply {
+                set(java.util.Calendar.HOUR_OF_DAY, 0)
+                set(java.util.Calendar.MINUTE, 0)
+                set(java.util.Calendar.SECOND, 0)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }.time
+
+            if (expiryDate != null && todayCal.after(expiryDate)) {
+                return Pair(false, "La licencia ha expirado el $expiry")
+            }
+
+            if (startDate != null && todayCal.before(startDate)) {
+                return Pair(false, "La licencia no está activa aún (inicia el $start)")
+            }
+
+            val data = LicenseData(devId, client, type, start, expiry, duration, id)
+            return Pair(true, data)
+        } catch (e: Exception) {
+            return Pair(false, "Clave corrupta o formato inválido")
+        }
+    }
+
     fun activateLicense(key: String): Boolean {
-        val trimmed = key.trim().uppercase()
-        if (trimmed == "FERR-2026-PRO" || trimmed == "ACTIVA-2026" || trimmed.startsWith("FERR-") || trimmed.length >= 6) {
-            prefs.edit().putBoolean("license_active", true).putString("license_key", trimmed).apply()
+        val trimmed = key.trim()
+        val result = validateAnnexedLicense(_deviceId.value, trimmed)
+        if (result.first && result.second is LicenseData) {
+            val data = result.second as LicenseData
+            prefs.edit()
+                .putBoolean("license_active", true)
+                .putString("license_key", trimmed)
+                .putString("license_client", data.client)
+                .putString("license_type", data.type)
+                .putString("license_expiry", data.expiry)
+                .putString("license_start", data.start)
+                .apply()
             _isLicenseActive.value = true
-            showSnackbar("¡Licencia activada con éxito!")
+            _licenseInfo.value = "${data.client} (${data.type.uppercase()}) - Vence: ${data.expiry}"
+            showSnackbar("¡Licencia activada para ${data.client} (${data.type.uppercase()})!")
             return true
         } else {
-            showSnackbar("Clave inválida. Introduce una clave válida.")
+            val errorMsg = result.second as? String ?: "Clave inválida. Introduce la clave generada para este terminal."
+            showSnackbar(errorMsg)
             return false
         }
     }
 
     fun deactivateLicense() {
-        prefs.edit().putBoolean("license_active", false).apply()
+        prefs.edit()
+            .putBoolean("license_active", false)
+            .remove("license_key")
+            .apply()
         _isLicenseActive.value = false
-        showSnackbar("Sistema bloqueado. Se requiere activación.")
+        _licenseInfo.value = null
+        showSnackbar("Sistema bloqueado. Se requiere activación autorizada.")
+    }
+
+    fun generateProductsExcelWorkbook(): String {
+        val sb = StringBuilder()
+        sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+        sb.append("<?mso-application progid=\"Excel.Sheet\"?>\n")
+        sb.append("<Workbook xmlns=\"urn:schemas-microsoft-com:office:spreadsheet\"\n")
+        sb.append(" xmlns:o=\"urn:schemas-microsoft-com:office:office\"\n")
+        sb.append(" xmlns:x=\"urn:schemas-microsoft-com:office:excel\"\n")
+        sb.append(" xmlns:ss=\"urn:schemas-microsoft-com:office:spreadsheet\"\n")
+        sb.append(" xmlns:html=\"http://www.w3.org/TR/REC-html40\">\n")
+        sb.append(" <Styles>\n")
+        sb.append("  <Style ss:ID=\"Default\" ss:Name=\"Normal\">\n")
+        sb.append("   <Alignment ss:Vertical=\"Center\"/>\n")
+        sb.append("   <Font ss:FontName=\"Calibri\" ss:Size=\"11\" ss:Color=\"#1A1A1A\"/>\n")
+        sb.append("  </Style>\n")
+        sb.append("  <Style ss:ID=\"HeaderStyle\">\n")
+        sb.append("   <Font ss:FontName=\"Calibri\" ss:Size=\"11\" ss:Bold=\"1\" ss:Color=\"#FFFFFF\"/>\n")
+        sb.append("   <Interior ss:Color=\"#107C41\" ss:Pattern=\"Solid\"/>\n")
+        sb.append("   <Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\"/>\n")
+        sb.append("   <Borders>\n")
+        sb.append("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#0B5F30\"/>\n")
+        sb.append("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#0B5F30\"/>\n")
+        sb.append("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#0B5F30\"/>\n")
+        sb.append("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#0B5F30\"/>\n")
+        sb.append("   </Borders>\n")
+        sb.append("  </Style>\n")
+        sb.append("  <Style ss:ID=\"DataCell\">\n")
+        sb.append("   <Borders>\n")
+        sb.append("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#DCDCDC\"/>\n")
+        sb.append("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#DCDCDC\"/>\n")
+        sb.append("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#DCDCDC\"/>\n")
+        sb.append("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#DCDCDC\"/>\n")
+        sb.append("   </Borders>\n")
+        sb.append("  </Style>\n")
+        sb.append("  <Style ss:ID=\"CurrencyCell\">\n")
+        sb.append("   <Alignment ss:Horizontal=\"Right\"/>\n")
+        sb.append("   <NumberFormat ss:Format=\"$#,##0.00\"/>\n")
+        sb.append("   <Borders>\n")
+        sb.append("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#DCDCDC\"/>\n")
+        sb.append("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#DCDCDC\"/>\n")
+        sb.append("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#DCDCDC\"/>\n")
+        sb.append("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#DCDCDC\"/>\n")
+        sb.append("   </Borders>\n")
+        sb.append("  </Style>\n")
+        sb.append(" </Styles>\n")
+        sb.append(" <Worksheet ss:Name=\"Inventario\">\n")
+        sb.append("  <Table ss:DefaultRowHeight=\"20\">\n")
+
+        val headers = listOf("Código", "Nombre", "Categoría", "Unidad", "Stock", "Costo ($)", "Precio ($)", "Margen (%)")
+        sb.append("   <Row ss:Height=\"24\">\n")
+        headers.forEach { h ->
+            sb.append("    <Cell ss:StyleID=\"HeaderStyle\"><Data ss:Type=\"String\">$h</Data></Cell>\n")
+        }
+        sb.append("   </Row>\n")
+
+        products.value.forEach { p ->
+            val margin = if (p.precioVenta > 0) (((p.precioVenta - p.costoUnitario) / p.precioVenta) * 100).toInt() else 100
+            val escName = p.nombre.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+            val escCat = p.categoria.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+            val escUnit = p.unidadMedida.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+
+            sb.append("   <Row>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"Number\">${p.id}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">$escName</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">$escCat</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">$escUnit</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"Number\">${p.stock}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"CurrencyCell\"><Data ss:Type=\"Number\">${p.costoUnitario}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"CurrencyCell\"><Data ss:Type=\"Number\">${p.precioVenta}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">$margin%</Data></Cell>\n")
+            sb.append("   </Row>\n")
+        }
+
+        sb.append("  </Table>\n")
+        sb.append(" </Worksheet>\n")
+        sb.append("</Workbook>")
+        return sb.toString()
     }
 
     fun generateProductsExcelCsv(): String {

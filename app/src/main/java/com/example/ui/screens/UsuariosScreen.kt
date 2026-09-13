@@ -76,6 +76,7 @@ fun UsuariosScreen(
     users: List<UserEntity>,
     deviceId: String,
     isLicenseActive: Boolean,
+    licenseInfo: String? = null,
     onLogin: (username: String, pass: String) -> Unit,
     onLogout: () -> Unit,
     onCreateUser: (username: String, pass: String, role: String) -> Unit,
@@ -275,6 +276,28 @@ fun UsuariosScreen(
                         }
                     }
 
+                    if (isLicenseActive && !licenseInfo.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = ForestSuccess.copy(alpha = 0.1f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text(
+                                    text = "Datos de Licencia:",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = ForestSuccess
+                                )
+                                Text(
+                                    text = licenseInfo,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+
                     if (isLicenseActive) {
                         Spacer(modifier = Modifier.height(10.dp))
                         Button(
@@ -288,7 +311,7 @@ fun UsuariosScreen(
                         ) {
                             Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Bloquear Sistema (Probar Pantalla de Bloqueo)", fontSize = 12.sp)
+                            Text("Bloquear Terminal (Probar Pantalla de Bloqueo)", fontSize = 12.sp)
                         }
                     }
                 }
@@ -316,7 +339,7 @@ fun UsuariosScreen(
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
-                        text = "Exporta el catálogo completo de productos con stock, precios y costos en formato compatible con Microsoft Excel (CSV UTF-8).",
+                        text = "Genera y exporta el catálogo completo de productos con stock, costos y precios en formato nativo de libro de trabajo Microsoft Excel (.xls).",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -332,7 +355,7 @@ fun UsuariosScreen(
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Exportar Inventario a Excel (CSV)")
+                        Text("Exportar Inventario a Excel (.xls)")
                     }
                 }
             }
