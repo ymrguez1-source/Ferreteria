@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -38,6 +39,9 @@ class FerreteriaViewModel(application: Application) : AndroidViewModel(applicati
 
     private val _licenseInfo = MutableStateFlow<String?>(null)
     val licenseInfo: StateFlow<String?> = _licenseInfo.asStateFlow()
+
+    private val _licenseStatus = MutableStateFlow(LicenseStatus())
+    val licenseStatus: StateFlow<LicenseStatus> = _licenseStatus.asStateFlow()
 
     private val _deviceId = MutableStateFlow("")
     val deviceId: StateFlow<String> = _deviceId.asStateFlow()
@@ -96,22 +100,15 @@ class FerreteriaViewModel(application: Application) : AndroidViewModel(applicati
         }
         _deviceId.value = savedDevId
 
-        // License check with annexed validation algorithm (NO MASTER KEYS)
-        val storedKey = prefs.getString("license_key", null)
-        if (!storedKey.isNullOrBlank()) {
-            val res = validateAnnexedLicense(savedDevId, storedKey)
-            if (res.first && res.second is LicenseData) {
-                val data = res.second as LicenseData
-                _isLicenseActive.value = true
-                _licenseInfo.value = "${data.client} (${data.type.uppercase()}) - Vence: ${data.expiry}"
-            } else {
-                _isLicenseActive.value = false
-                _licenseInfo.value = null
-                prefs.edit().putBoolean("license_active", false).apply()
+        // Initial license verification & expiration check
+        checkCurrentLicenseStatus()
+
+        // Background periodic checker to identify expiration live and lock immediately if expired
+        viewModelScope.launch {
+            while (isActive) {
+                kotlinx.coroutines.delay(30_000)
+                checkCurrentLicenseStatus()
             }
-        } else {
-            _isLicenseActive.value = false
-            _licenseInfo.value = null
         }
 
         // Auto login default admin if not set
@@ -295,11 +292,31 @@ class FerreteriaViewModel(application: Application) : AndroidViewModel(applicati
         val id: String
     )
 
-    fun validateAnnexedLicense(currentDeviceId: String, rawKey: String): Pair<Boolean, Any?> {
+    data class LicenseStatus(
+        val isActive: Boolean = false,
+        val isExpired: Boolean = false,
+        val expiryDate: String? = null,
+        val startDate: String? = null,
+        val clientName: String? = null,
+        val licenseType: String? = null,
+        val daysRemainingOrExpired: Int = 0,
+        val message: String? = null
+    )
+
+    data class ValidationResult(
+        val valid: Boolean,
+        val isExpired: Boolean = false,
+        val data: LicenseData? = null,
+        val daysExpired: Int = 0,
+        val daysRemaining: Int = 0,
+        val message: String
+    )
+
+    fun validateAnnexedLicense(currentDeviceId: String, rawKey: String): ValidationResult {
         try {
             val cleanKey = rawKey.trim()
             if (cleanKey.length < 15) {
-                return Pair(false, "Clave de licencia inválida (longitud insuficiente)")
+                return ValidationResult(valid = false, message = "Clave de licencia inválida (longitud insuficiente)")
             }
 
             val receivedSig = cleanKey.substring(4, 14)
@@ -333,14 +350,19 @@ class FerreteriaViewModel(application: Application) : AndroidViewModel(applicati
             val expectedSig = java.lang.Long.toString(absHash, 36).uppercase().padStart(10, '0')
 
             if (expectedSig != receivedSig) {
-                return Pair(false, "Firma digital de licencia inválida")
+                return ValidationResult(valid = false, message = "Firma digital de licencia inválida")
             }
 
             if (devId != currentDeviceId) {
-                return Pair(false, "El ID de dispositivo ($devId) no coincide con este terminal ($currentDeviceId)")
+                return ValidationResult(
+                    valid = false,
+                    message = "El ID de dispositivo ($devId) no coincide con este terminal ($currentDeviceId)"
+                )
             }
 
-            // Expiry check
+            val data = LicenseData(devId, client, type, start, expiry, duration, id)
+
+            // Expiry and activation date check
             val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT)
             val expiryDate = sdf.parse(expiry.substring(0, 10))
             val startDate = sdf.parse(start.substring(0, 10))
@@ -352,25 +374,109 @@ class FerreteriaViewModel(application: Application) : AndroidViewModel(applicati
             }.time
 
             if (expiryDate != null && todayCal.after(expiryDate)) {
-                return Pair(false, "La licencia ha expirado el $expiry")
+                val diffMs = todayCal.time - expiryDate.time
+                val daysPassed = maxOf(1, java.util.concurrent.TimeUnit.MILLISECONDS.toDays(diffMs).toInt())
+                return ValidationResult(
+                    valid = false,
+                    isExpired = true,
+                    data = data,
+                    daysExpired = daysPassed,
+                    message = "La licencia de este terminal expiró el $expiry (hace $daysPassed días)"
+                )
             }
 
             if (startDate != null && todayCal.before(startDate)) {
-                return Pair(false, "La licencia no está activa aún (inicia el $start)")
+                return ValidationResult(
+                    valid = false,
+                    isExpired = false,
+                    data = data,
+                    message = "La licencia no está activa aún (inicia el $start)"
+                )
             }
 
-            val data = LicenseData(devId, client, type, start, expiry, duration, id)
-            return Pair(true, data)
+            val remainingDays = if (expiryDate != null) {
+                val diffMs = expiryDate.time - todayCal.time
+                maxOf(0, java.util.concurrent.TimeUnit.MILLISECONDS.toDays(diffMs).toInt())
+            } else 0
+
+            return ValidationResult(
+                valid = true,
+                isExpired = false,
+                data = data,
+                daysRemaining = remainingDays,
+                message = "Licencia válida"
+            )
         } catch (e: Exception) {
-            return Pair(false, "Clave corrupta o formato inválido")
+            return ValidationResult(valid = false, message = "Clave corrupta o formato inválido")
+        }
+    }
+
+    fun checkCurrentLicenseStatus(): Boolean {
+        val currentDevId = _deviceId.value
+        val storedKey = prefs.getString("license_key", null)
+        if (storedKey.isNullOrBlank()) {
+            _isLicenseActive.value = false
+            _licenseInfo.value = null
+            _licenseStatus.value = LicenseStatus(
+                isActive = false,
+                isExpired = false,
+                message = "Se requiere clave de activación para este terminal"
+            )
+            prefs.edit().putBoolean("license_active", false).apply()
+            return false
+        }
+
+        val res = validateAnnexedLicense(currentDevId, storedKey)
+        if (res.valid && res.data != null) {
+            val data = res.data
+            _isLicenseActive.value = true
+            _licenseInfo.value = "${data.client} (${data.type.uppercase()}) - Vence: ${data.expiry} (${res.daysRemaining} días restantes)"
+            _licenseStatus.value = LicenseStatus(
+                isActive = true,
+                isExpired = false,
+                expiryDate = data.expiry,
+                startDate = data.start,
+                clientName = data.client,
+                licenseType = data.type,
+                daysRemainingOrExpired = res.daysRemaining,
+                message = "Licencia activa hasta ${data.expiry}"
+            )
+            prefs.edit().putBoolean("license_active", true).apply()
+            return true
+        } else {
+            _isLicenseActive.value = false
+            prefs.edit().putBoolean("license_active", false).apply()
+            if (res.isExpired && res.data != null) {
+                val data = res.data
+                _licenseInfo.value = "EXPIRADA el ${data.expiry}"
+                _licenseStatus.value = LicenseStatus(
+                    isActive = false,
+                    isExpired = true,
+                    expiryDate = data.expiry,
+                    startDate = data.start,
+                    clientName = data.client,
+                    licenseType = data.type,
+                    daysRemainingOrExpired = -res.daysExpired,
+                    message = res.message
+                )
+            } else {
+                _licenseInfo.value = null
+                _licenseStatus.value = LicenseStatus(
+                    isActive = false,
+                    isExpired = false,
+                    message = res.message
+                )
+            }
+            return false
         }
     }
 
     fun activateLicense(key: String): Boolean {
         val trimmed = key.trim()
-        val result = validateAnnexedLicense(_deviceId.value, trimmed)
-        if (result.first && result.second is LicenseData) {
-            val data = result.second as LicenseData
+        val currentDevId = _deviceId.value
+        val result = validateAnnexedLicense(currentDevId, trimmed)
+        if (result.valid && result.data != null) {
+            val data = result.data
             prefs.edit()
                 .putBoolean("license_active", true)
                 .putString("license_key", trimmed)
@@ -381,11 +487,34 @@ class FerreteriaViewModel(application: Application) : AndroidViewModel(applicati
                 .apply()
             _isLicenseActive.value = true
             _licenseInfo.value = "${data.client} (${data.type.uppercase()}) - Vence: ${data.expiry}"
-            showSnackbar("¡Licencia activada para ${data.client} (${data.type.uppercase()})!")
+            _licenseStatus.value = LicenseStatus(
+                isActive = true,
+                isExpired = false,
+                expiryDate = data.expiry,
+                startDate = data.start,
+                clientName = data.client,
+                licenseType = data.type,
+                daysRemainingOrExpired = result.daysRemaining,
+                message = "Licencia activa"
+            )
+            showSnackbar("¡Licencia activada con éxito para ${data.client} (${data.type.uppercase()})! Vigente hasta ${data.expiry}")
             return true
         } else {
-            val errorMsg = result.second as? String ?: "Clave inválida. Introduce la clave generada para este terminal."
-            showSnackbar(errorMsg)
+            if (result.isExpired && result.data != null) {
+                _licenseStatus.value = LicenseStatus(
+                    isActive = false,
+                    isExpired = true,
+                    expiryDate = result.data.expiry,
+                    startDate = result.data.start,
+                    clientName = result.data.client,
+                    licenseType = result.data.type,
+                    daysRemainingOrExpired = -result.daysExpired,
+                    message = result.message
+                )
+                showSnackbar("❌ Clave rechazada: La licencia indicada expiró el ${result.data.expiry}. Debe generar la próxima licencia con vigencia actual.")
+            } else {
+                showSnackbar(result.message)
+            }
             return false
         }
     }
@@ -397,6 +526,11 @@ class FerreteriaViewModel(application: Application) : AndroidViewModel(applicati
             .apply()
         _isLicenseActive.value = false
         _licenseInfo.value = null
+        _licenseStatus.value = LicenseStatus(
+            isActive = false,
+            isExpired = false,
+            message = "Sistema bloqueado. Se requiere activación autorizada."
+        )
         showSnackbar("Sistema bloqueado. Se requiere activación autorizada.")
     }
 

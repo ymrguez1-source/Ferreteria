@@ -684,14 +684,27 @@
   <div id="app">
     <!-- MANDATORY LICENSE LOCK SCREEN (BLOCKED UNTIL ACTIVATED) -->
     <div id="license-lock-screen" style="display: none;">
-      <div class="lock-icon-container">
+      <div class="lock-icon-container" id="lock-icon-container">
         🔒
       </div>
       <div class="lock-card">
-        <h2>Activación Requerida</h2>
-        <p class="subtitle">
+        <h2 id="lock-title">Activación Requerida</h2>
+        <p class="subtitle" id="lock-subtitle">
           Esta aplicación está protegida por licencia. Debes ingresar la clave de activación generada específicamente para el identificador único de este dispositivo.
         </p>
+
+        <!-- Expiration Alert Box (Shown when license expired) -->
+        <div id="lock-expired-alert" style="display: none; background: #FFEBEE; border: 1.5px solid #EF5350; border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; text-align: left;">
+          <div style="display: flex; align-items: center; gap: 8px; color: #C62828; font-weight: 700; font-size: 0.85rem; margin-bottom: 6px;">
+            <span>⚠️</span> <span>VIGENCIA CONCLUIDA</span>
+          </div>
+          <div style="font-size: 0.8rem; color: #37474F; margin-bottom: 4px;">
+            Fecha de vencimiento identificada: <strong id="lock-expired-date" style="color: #C62828; font-family: monospace;">-</strong>
+          </div>
+          <div style="font-size: 0.78rem; color: #546E7A; line-height: 1.4;">
+            El sistema ha detectado que la fecha límite de la licencia ha expirado. El sistema permanecerá totalmente bloqueado hasta ingresar la próxima licencia autorizada.
+          </div>
+        </div>
 
         <label style="font-size: 0.75rem; font-weight: 700; color: var(--outline);">ID DE ESTE DISPOSITIVO:</label>
         <div class="device-id-box">
@@ -701,17 +714,17 @@
 
         <form onsubmit="handleLockActivation(event)">
           <div class="form-group">
-            <label style="font-weight: 700;">Clave de Licencia:</label>
-            <input type="text" id="lock-license-key-input" placeholder="Pega la clave generada por el administrador" required style="font-family: monospace; font-size: 0.85rem;" autocomplete="off" />
+            <label style="font-weight: 700;" id="lock-input-label">Clave de Licencia:</label>
+            <input type="text" id="lock-license-key-input" placeholder="Pega la clave autorizada para este terminal" required style="font-family: monospace; font-size: 0.85rem;" autocomplete="off" />
           </div>
 
-          <button type="submit" class="btn btn-primary btn-block" style="padding: 14px; font-size: 0.95rem;">
+          <button type="submit" id="lock-submit-btn" class="btn btn-primary btn-block" style="padding: 14px; font-size: 0.95rem;">
             🔓 Activar y Desbloquear Sistema
           </button>
         </form>
 
-        <div style="margin-top: 14px; padding: 10px; background: #FFF8E1; border: 1px solid #FFE082; border-radius: 8px; font-size: 0.78rem; color: #5D4037; line-height: 1.4;">
-          📌 <strong>Instrucciones:</strong> Copia el <strong>ID de este Dispositivo</strong> y pégalo en el <em>Generador de Licencias</em> del administrador para obtener la clave válida para este terminal.
+        <div id="lock-instructions" style="margin-top: 14px; padding: 10px; background: #FFF8E1; border: 1px solid #FFE082; border-radius: 8px; font-size: 0.78rem; color: #5D4037; line-height: 1.4;">
+          📌 <strong>Instrucciones:</strong> Copia el <strong>ID de este Dispositivo</strong> y pégalo en el <em>Generador de Licencias</em> del administrador para emitir la próxima licencia vigente para este terminal.
         </div>
       </div>
     </div>
@@ -1256,6 +1269,8 @@
 
     let state = {
       isLicenseActive: false,
+      isLicenseExpired: false,
+      expiredLicenseInfo: null,
       licenseData: null,
       deviceId: '',
       products: [],
@@ -1269,10 +1284,10 @@
     // NO TIENE LICENCIAS MAESTRAS: la clave debe estar firmada digitalmente para este dispositivo específico
     function validateLicense(deviceId, licenseKey) {
       try {
-        if (!licenseKey) return { valid: false, reason: 'Ingresa una clave de licencia' };
+        if (!licenseKey) return { valid: false, isExpired: false, reason: 'Ingresa una clave de licencia' };
         const cleanKey = licenseKey.trim();
         if (cleanKey.length < 15) {
-          return { valid: false, reason: 'Formato de clave inválido (longitud insuficiente)' };
+          return { valid: false, isExpired: false, reason: 'Formato de clave inválido (longitud insuficiente)' };
         }
 
         const encoded = cleanKey.substring(14);
@@ -1293,31 +1308,86 @@
         const receivedSig = cleanKey.substring(4, 14);
 
         if (expectedSig !== receivedSig) {
-          return { valid: false, reason: 'Firma digital de licencia inválida' };
+          return { valid: false, isExpired: false, reason: 'Firma digital de licencia inválida' };
         }
 
         if (data.deviceId !== deviceId) {
-          return { valid: false, reason: `El ID de dispositivo (${data.deviceId}) no coincide con este terminal (${deviceId})` };
+          return { valid: false, isExpired: false, reason: `El ID de dispositivo (${data.deviceId}) no coincide con este terminal (${deviceId})` };
         }
 
-        const expiry = new Date(data.expiry);
+        const expiryParts = data.expiry.substring(0, 10).split('-');
+        const expiryDate = new Date(parseInt(expiryParts[0], 10), parseInt(expiryParts[1], 10) - 1, parseInt(expiryParts[2], 10));
         const todayZero = new Date();
         todayZero.setHours(0, 0, 0, 0);
 
-        if (expiry < todayZero) {
-          return { valid: false, reason: `Licencia expirada el ${new Date(data.expiry).toLocaleDateString('es-ES')}` };
+        if (expiryDate < todayZero) {
+          const diffMs = todayZero.getTime() - expiryDate.getTime();
+          const daysPassed = Math.max(1, Math.round(diffMs / 86400000));
+          return {
+            valid: false,
+            isExpired: true,
+            expiryDate: data.expiry,
+            startDate: data.start,
+            client: data.client,
+            type: data.type,
+            daysPassed: daysPassed,
+            data: data,
+            reason: `La licencia de este terminal expiró el ${data.expiry} (hace ${daysPassed} días)`
+          };
         }
 
-        const start = new Date(data.start);
-        const now = new Date();
-        if (start > now) {
-          return { valid: false, reason: `Licencia aún no activa (vigente a partir del ${new Date(data.start).toLocaleDateString('es-ES')})` };
+        const startParts = data.start.substring(0, 10).split('-');
+        const startDate = new Date(parseInt(startParts[0], 10), parseInt(startParts[1], 10) - 1, parseInt(startParts[2], 10));
+        if (startDate > todayZero) {
+          return {
+            valid: false,
+            isExpired: false,
+            data: data,
+            reason: `La licencia no está activa aún (vigente a partir del ${data.start})`
+          };
         }
 
-        return { valid: true, data: data };
+        const remainingMs = expiryDate.getTime() - todayZero.getTime();
+        const daysRemaining = Math.max(0, Math.round(remainingMs / 86400000));
+
+        return {
+          valid: true,
+          isExpired: false,
+          daysRemaining: daysRemaining,
+          data: data
+        };
       } catch (e) {
-        return { valid: false, reason: 'Clave inválida o corrupta' };
+        return { valid: false, isExpired: false, reason: 'Clave inválida o corrupta' };
       }
+    }
+
+    function checkCurrentLicenseStatus() {
+      const savedLicenseKey = localStorage.getItem(STORAGE_PREFIX + 'license_key');
+      if (savedLicenseKey) {
+        const val = validateLicense(state.deviceId, savedLicenseKey);
+        if (val.valid && val.data) {
+          state.isLicenseActive = true;
+          state.isLicenseExpired = false;
+          state.expiredLicenseInfo = null;
+          state.licenseData = val.data;
+          state.daysRemaining = val.daysRemaining;
+          localStorage.setItem(STORAGE_PREFIX + 'license_active', 'true');
+        } else {
+          state.isLicenseActive = false;
+          state.isLicenseExpired = !!val.isExpired;
+          state.expiredLicenseInfo = val.isExpired ? val : null;
+          state.licenseData = null;
+          localStorage.removeItem(STORAGE_PREFIX + 'license_active');
+        }
+      } else {
+        state.isLicenseActive = false;
+        state.isLicenseExpired = false;
+        state.expiredLicenseInfo = null;
+        state.licenseData = null;
+        localStorage.removeItem(STORAGE_PREFIX + 'license_active');
+      }
+
+      applyLicenseGate();
     }
 
     function loadData() {
@@ -1337,22 +1407,11 @@
       const setDevIdEl = document.getElementById('device-id-field');
       if (setDevIdEl) setDevIdEl.value = devId;
 
-      // 2. Comprobación estricta de licencia (sin claves maestras)
-      const savedLicenseKey = localStorage.getItem(STORAGE_PREFIX + 'license_key');
-      if (savedLicenseKey) {
-        const val = validateLicense(state.deviceId, savedLicenseKey);
-        if (val.valid) {
-          state.isLicenseActive = true;
-          state.licenseData = val.data;
-        } else {
-          state.isLicenseActive = false;
-          state.licenseData = null;
-          localStorage.removeItem(STORAGE_PREFIX + 'license_active');
-        }
-      } else {
-        state.isLicenseActive = false;
-        state.licenseData = null;
-      }
+      // 2. Comprobación estricta de licencia con identificación de fecha de expiración
+      checkCurrentLicenseStatus();
+
+      // Chequeo periódico en segundo plano para bloquear inmediatamente al cruzar medianoche o expirar
+      setInterval(checkCurrentLicenseStatus, 30000);
 
       // 3. Load database
       const p = localStorage.getItem(STORAGE_PREFIX + 'products');
@@ -1371,9 +1430,6 @@
           saveData();
         }
       }
-
-      // Verify License Lock
-      applyLicenseGate();
     }
 
     function applyLicenseGate() {
@@ -1381,6 +1437,15 @@
       const header = document.querySelector('header');
       const main = document.getElementById('main-content');
       const nav = document.querySelector('nav.bottom-nav');
+
+      const lockTitle = document.getElementById('lock-title');
+      const lockSubtitle = document.getElementById('lock-subtitle');
+      const lockIcon = document.getElementById('lock-icon-container');
+      const lockExpiredAlert = document.getElementById('lock-expired-alert');
+      const lockExpiredDate = document.getElementById('lock-expired-date');
+      const lockInputLabel = document.getElementById('lock-input-label');
+      const lockSubmitBtn = document.getElementById('lock-submit-btn');
+      const lockInstructions = document.getElementById('lock-instructions');
 
       if (!state.isLicenseActive) {
         // App is locked!
@@ -1391,6 +1456,52 @@
         header.style.pointerEvents = 'none';
         main.style.pointerEvents = 'none';
         nav.style.pointerEvents = 'none';
+
+        if (state.isLicenseExpired && state.expiredLicenseInfo) {
+          const exp = state.expiredLicenseInfo;
+          if (lockTitle) lockTitle.innerText = 'SISTEMA BLOQUEADO';
+          if (lockTitle) lockTitle.style.color = '#B71C1C';
+          if (lockSubtitle) lockSubtitle.innerText = 'Licencia Expirada';
+          if (lockSubtitle) lockSubtitle.style.color = '#C62828';
+          if (lockIcon) {
+            lockIcon.innerText = '🛑';
+            lockIcon.style.background = '#FFEBEE';
+          }
+          if (lockExpiredAlert) lockExpiredAlert.style.display = 'block';
+          if (lockExpiredDate) {
+            lockExpiredDate.innerText = `${exp.expiryDate} (hace ${exp.daysPassed} días)`;
+          }
+          if (lockInputLabel) lockInputLabel.innerText = 'Clave de la Próxima Licencia:';
+          if (lockSubmitBtn) {
+            lockSubmitBtn.innerText = '🔓 Desbloquear con Próxima Licencia';
+            lockSubmitBtn.className = 'btn btn-danger btn-block';
+          }
+          if (lockInstructions) {
+            lockInstructions.innerHTML = `📌 <strong>Atención:</strong> La licencia de este terminal venció el <strong>${exp.expiryDate}</strong>. El sistema se mantendrá bloqueado hasta ingresar la clave de tu próxima licencia autorizada. Proporciona el ID <code>${state.deviceId}</code> al proveedor.`;
+          }
+        } else {
+          if (lockTitle) {
+            lockTitle.innerText = 'Activación Requerida';
+            lockTitle.style.color = 'inherit';
+          }
+          if (lockSubtitle) {
+            lockSubtitle.innerText = 'Esta aplicación está protegida por licencia. Debes ingresar la clave de activación generada específicamente para el identificador único de este dispositivo.';
+            lockSubtitle.style.color = 'inherit';
+          }
+          if (lockIcon) {
+            lockIcon.innerText = '🔒';
+            lockIcon.style.background = 'var(--primary-light)';
+          }
+          if (lockExpiredAlert) lockExpiredAlert.style.display = 'none';
+          if (lockInputLabel) lockInputLabel.innerText = 'Clave de Licencia:';
+          if (lockSubmitBtn) {
+            lockSubmitBtn.innerText = '🔓 Activar y Desbloquear Sistema';
+            lockSubmitBtn.className = 'btn btn-primary btn-block';
+          }
+          if (lockInstructions) {
+            lockInstructions.innerHTML = `📌 <strong>Instrucciones:</strong> Copia el <strong>ID de este Dispositivo</strong> y pégalo en el <em>Generador de Licencias</em> del administrador para obtener la clave válida para este terminal.`;
+          }
+        }
       } else {
         // App is unlocked
         lockScreen.style.display = 'none';
@@ -1408,7 +1519,7 @@
         badge.className = state.isLicenseActive ? 'badge badge-success' : 'badge badge-danger';
         badge.innerText = state.isLicenseActive 
           ? `ACTIVA (${(state.licenseData && state.licenseData.type) ? state.licenseData.type.toUpperCase() : 'OK'})`
-          : 'BLOQUEADA';
+          : (state.isLicenseExpired ? 'EXPIRADA' : 'BLOQUEADA');
       }
 
       if (detailsBox) {
@@ -1420,7 +1531,8 @@
           const idEl = document.getElementById('lic-detail-id');
           if (clEl) clEl.innerText = state.licenseData.client || 'Cliente';
           if (tyEl) tyEl.innerText = (state.licenseData.type || '').toUpperCase();
-          if (daEl) daEl.innerText = `${state.licenseData.start} al ${state.licenseData.expiry} (${state.licenseData.duration} días)`;
+          const remText = state.daysRemaining !== undefined ? ` - ${state.daysRemaining} días restantes` : '';
+          if (daEl) daEl.innerText = `${state.licenseData.start} al ${state.licenseData.expiry} (${state.licenseData.duration} días${remText})`;
           if (idEl) idEl.innerText = state.licenseData.id || '-';
         } else {
           detailsBox.style.display = 'none';
@@ -1433,16 +1545,23 @@
       const input = document.getElementById('lock-license-key-input').value.trim();
       
       const res = validateLicense(state.deviceId, input);
-      if (res.valid) {
+      if (res.valid && res.data) {
         state.isLicenseActive = true;
+        state.isLicenseExpired = false;
+        state.expiredLicenseInfo = null;
         state.licenseData = res.data;
+        state.daysRemaining = res.daysRemaining;
         localStorage.setItem(STORAGE_PREFIX + 'license_active', 'true');
         localStorage.setItem(STORAGE_PREFIX + 'license_key', input);
-        alert(`🎉 ¡Licencia activada con éxito!\n\nCliente: ${res.data.client}\nTipo: ${res.data.type.toUpperCase()}\nVigencia: ${res.data.start} al ${res.data.expiry}`);
+        alert(`🎉 ¡Licencia activada con éxito!\n\nCliente: ${res.data.client}\nTipo: ${res.data.type.toUpperCase()}\nVigencia: ${res.data.start} al ${res.data.expiry}\n\nEl sistema se encuentra desbloqueado.`);
         applyLicenseGate();
         renderDashboard();
       } else {
-        alert(`❌ Error de activación:\n${res.reason}\n\nAsegúrate de copiar tu ID de dispositivo (${state.deviceId}) en el Generador de Licencias para emitir la clave correcta.`);
+        if (res.isExpired) {
+          alert(`❌ Clave Rechazada por Expiración:\n\nLa clave ingresada venció el ${res.expiryDate} (hace ${res.daysPassed} días).\n\nEl sistema permanece bloqueado. Debes generar la próxima licencia con vigencia actual para este ID de terminal (${state.deviceId}).`);
+        } else {
+          alert(`❌ Error de activación:\n${res.reason}\n\nAsegúrate de copiar tu ID de dispositivo (${state.deviceId}) en el Generador de Licencias para emitir la clave correcta.`);
+        }
       }
     }
 

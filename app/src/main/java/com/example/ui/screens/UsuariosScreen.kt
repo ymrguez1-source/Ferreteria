@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VpnKey
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -66,6 +67,7 @@ import com.example.ui.theme.CrimsonDanger
 import com.example.ui.theme.ForestSuccess
 import com.example.ui.theme.SteelSecondary
 import com.example.ui.theme.TerracottaPrimary
+import com.example.ui.theme.WarmWarning
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -77,6 +79,7 @@ fun UsuariosScreen(
     deviceId: String,
     isLicenseActive: Boolean,
     licenseInfo: String? = null,
+    licenseStatus: com.example.ui.FerreteriaViewModel.LicenseStatus = com.example.ui.FerreteriaViewModel.LicenseStatus(),
     onLogin: (username: String, pass: String) -> Unit,
     onLogout: () -> Unit,
     onCreateUser: (username: String, pass: String, role: String) -> Unit,
@@ -295,6 +298,28 @@ fun UsuariosScreen(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
+                            }
+                        }
+
+                        if (licenseStatus.daysRemainingOrExpired in 1..7 && licenseStatus.expiryDate != null) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = WarmWarning.copy(alpha = 0.15f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Warning, contentDescription = null, tint = WarmWarning, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Atención: La licencia expira en ${licenseStatus.daysRemainingOrExpired} días (${licenseStatus.expiryDate}). Pega la clave de tu próxima licencia para renovar con anticipación.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
                             }
                         }
                     }

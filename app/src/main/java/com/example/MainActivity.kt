@@ -101,6 +101,7 @@ fun FerreteriaApp(viewModel: FerreteriaViewModel) {
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val isLicenseActive by viewModel.isLicenseActive.collectAsStateWithLifecycle()
     val licenseInfo by viewModel.licenseInfo.collectAsStateWithLifecycle()
+    val licenseStatus by viewModel.licenseStatus.collectAsStateWithLifecycle()
     val deviceId by viewModel.deviceId.collectAsStateWithLifecycle()
     val snackbarMessage by viewModel.snackbarMessage.collectAsStateWithLifecycle()
     val searchQuery by viewModel.productSearchQuery.collectAsStateWithLifecycle()
@@ -128,6 +129,7 @@ fun FerreteriaApp(viewModel: FerreteriaViewModel) {
         ) { innerPadding ->
             LicenseLockScreen(
                 deviceId = deviceId,
+                licenseStatus = licenseStatus,
                 modifier = Modifier.padding(innerPadding),
                 onActivate = { key -> viewModel.activateLicense(key) }
             )
@@ -332,6 +334,7 @@ fun FerreteriaApp(viewModel: FerreteriaViewModel) {
                     deviceId = deviceId,
                     isLicenseActive = isLicenseActive,
                     licenseInfo = licenseInfo,
+                    licenseStatus = licenseStatus,
                     onLogin = { u, p -> viewModel.login(u, p) },
                     onLogout = { viewModel.logout() },
                     onCreateUser = { u, p, r -> viewModel.createUser(u, p, r) },
