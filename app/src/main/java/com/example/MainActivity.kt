@@ -411,6 +411,11 @@ fun FerreteriaApp(viewModel: FerreteriaViewModel) {
                 )
                 showProductDialog = false
                 editingProduct = null
+            },
+            onDelete = { prod ->
+                viewModel.deleteProduct(prod.id)
+                showProductDialog = false
+                editingProduct = null
             }
         )
     }

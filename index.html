@@ -1128,6 +1128,7 @@
             <strong id="prod-margin-preview">0.0% ($0.00 ganancia)</strong>
           </div>
           <button type="submit" class="btn btn-primary btn-block">Guardar Producto</button>
+          <button type="button" class="btn btn-danger btn-block" id="btn-delete-product" style="display: none; margin-top: 10px; background-color: var(--danger, #BA1A1A); color: white; border: none; border-radius: var(--radius); padding: 12px; font-weight: 600; cursor: pointer;" onclick="deleteProductFromModal()">🗑️ Eliminar Producto</button>
         </form>
       </div>
     </div>
@@ -1629,6 +1630,7 @@
     function escapeXml(str) {
       if (str === null || str === undefined) return '';
       return String(str)
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -1690,7 +1692,7 @@
         const cd = new Uint8Array(46);
         const dvCd = new DataView(cd.buffer);
         dvCd.setUint32(0, 0x02014b50, true);
-        dvCd.setUint16(4, 20, true); // ver made by
+        dvCd.setUint16(4, 0x0014, true); // ver made by DOS 2.0
         dvCd.setUint16(6, 20, true); // ver needed
         dvCd.setUint16(8, 0x0800, true); // UTF-8 flag
         dvCd.setUint16(10, 0, true); // store
@@ -1704,7 +1706,7 @@
         dvCd.setUint16(32, 0, true); // comment len
         dvCd.setUint16(34, 0, true); // disk num
         dvCd.setUint16(36, 0, true); // int attr
-        dvCd.setUint32(38, 0, true); // ext attr
+        dvCd.setUint32(38, 0x00000020, true); // ext attr: FILE_ATTRIBUTE_ARCHIVE (required for Windows/Excel)
         dvCd.setUint32(42, offset, true); // lh offset
 
         cdParts.push(cd, nameBytes);
@@ -1750,7 +1752,7 @@
       let r1 = "";
       for (let c = 0; c < headers.length; c++) {
         const colRef = getColLetter(c + 1) + "1";
-        r1 += `<c r="${colRef}" s="1" t="inlineStr"><is><t>${escapeXml(headers[c])}</t></is></c>`;
+        r1 += `<c r="${colRef}" s="1" t="inlineStr"><is><t xml:space="preserve">${escapeXml(headers[c])}</t></is></c>`;
       }
       sheetDataXml += `<row r="1" ht="24" customHeight="1">${r1}</row>`;
 
@@ -1763,21 +1765,26 @@
           const colRef = getColLetter(c + 1) + rowNum;
           const cell = row[c];
           if (typeof cell === "number") {
-            rXml += `<c r="${colRef}"><v>${cell}</v></c>`;
+            const num = isFinite(cell) ? cell : 0;
+            rXml += `<c r="${colRef}"><v>${num}</v></c>`;
           } else if (cell && typeof cell === "object" && cell.isCurrency) {
             const num = (typeof cell.value === 'number') ? cell.value : (parseFloat(cell.value) || 0);
-            rXml += `<c r="${colRef}" s="2"><v>${num}</v></c>`;
+            const safeNum = isFinite(num) ? num : 0;
+            rXml += `<c r="${colRef}" s="2"><v>${safeNum}</v></c>`;
           } else {
-            rXml += `<c r="${colRef}" t="inlineStr"><is><t>${escapeXml(cell ?? '')}</t></is></c>`;
+            rXml += `<c r="${colRef}" t="inlineStr"><is><t xml:space="preserve">${escapeXml(cell ?? '')}</t></is></c>`;
           }
         }
         sheetDataXml += `<row r="${rowNum}">${rXml}</row>`;
       }
 
+      const lastCol = getColLetter(Math.max(headers.length, 1));
+      const lastRow = Math.max(rows.length + 1, 1);
+
       const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
   <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
   <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
   <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
@@ -1791,6 +1798,9 @@
       const safeSheetName = (sheetName || "Hoja1").replace(/[:\\/?*\[\]]/g, "_").slice(0, 31);
       const wbXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <bookViews>
+    <workbookView xWindow="0" yWindow="0" windowWidth="20480" windowHeight="10240"/>
+  </bookViews>
   <sheets>
     <sheet name="${escapeXml(safeSheetName)}" sheetId="1" r:id="rId1"/>
   </sheets>
@@ -1808,21 +1818,22 @@
     <numFmt numFmtId="164" formatCode="&quot;$&quot;#,##0.00"/>
   </numFmts>
   <fonts count="2">
-    <font><sz val="11"/><name val="Calibri"/></font>
+    <font><sz val="11"/><color rgb="FF000000"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
   </fonts>
   <fills count="3">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF107C41"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFC85A32"/></patternFill></fill>
   </fills>
   <borders count="2">
-    <border><left/><right/><top/><bottom/></border>
+    <border><left/><right/><top/><bottom/><diagonal/></border>
     <border>
       <left style="thin"><color rgb="FFD4D4D4"/></left>
       <right style="thin"><color rgb="FFD4D4D4"/></right>
       <top style="thin"><color rgb="FFD4D4D4"/></top>
       <bottom style="thin"><color rgb="FFD4D4D4"/></bottom>
+      <diagonal/>
     </border>
   </borders>
   <cellStyleXfs count="1">
@@ -1833,15 +1844,23 @@
     <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
       <alignment horizontal="center" vertical="center"/>
     </xf>
-    <xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1">
+    <xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1">
       <alignment horizontal="right" vertical="center"/>
     </xf>
   </cellXfs>
+  <cellStyles count="1">
+    <cellStyle name="Normal" xfId="0" builtinId="0"/>
+  </cellStyles>
+  <dxfs count="0"/>
+  <tableStyles count="0" defaultTableStyle="TableStyleMedium9" defaultPivotStyle="PivotStyleLight16"/>
 </styleSheet>`;
 
       const wsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <sheetViews><sheetView tabSelected="1" workbookViewId="0"/></sheetViews>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <dimension ref="A1:${lastCol}${lastRow}"/>
+  <sheetViews>
+    <sheetView tabSelected="1" workbookViewId="0"/>
+  </sheetViews>
   <sheetFormatPr defaultRowHeight="20"/>
   <sheetData>${sheetDataXml}</sheetData>
 </worksheet>`;
@@ -1857,13 +1876,15 @@
     }
 
     function generateCsvText(headers, rows) {
-      let csv = "sep=;\r\n"; // Hint nativo para que Microsoft Excel abra automáticamente con columnas separadas
-      csv += headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(";") + "\r\n";
+      let csv = headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(";") + "\r\n";
       rows.forEach(r => {
         csv += r.map(c => {
           if (c === null || c === undefined) return '""';
-          if (typeof c === 'number') return c.toString();
-          if (typeof c === 'object' && c.isCurrency) return Number(c.value).toFixed(2);
+          if (typeof c === 'number') return isFinite(c) ? c.toString() : '0';
+          if (typeof c === 'object' && c.isCurrency) {
+            const val = typeof c.value === 'number' ? c.value : parseFloat(c.value);
+            return (isFinite(val) ? val.toFixed(2) : '0.00');
+          }
           return `"${String(c).replace(/"/g, '""')}"`;
         }).join(";") + "\r\n";
       });
@@ -2096,26 +2117,55 @@
           let updatedCount = 0;
 
           lines.forEach((line, index) => {
-            const cleanLine = line.trim();
+            let cleanLine = line.trim();
             if (!cleanLine) return;
+            if (cleanLine.toLowerCase().startsWith('sep=')) return;
 
-            // Detect separator: semicolon ';' or comma ','
-            const sep = cleanLine.includes(';') ? ';' : ',';
+            // Detect separator: semicolon ';', tab '\t', or comma ','
+            const sep = cleanLine.includes(';') ? ';' : (cleanLine.includes('\t') ? '\t' : ',');
             const cols = parseCsvLine(cleanLine, sep);
 
-            if (cols.length < 4) return;
+            if (cols.length < 2) return;
 
-            const name = cols[0].trim();
+            let name = cols[0] ? cols[0].trim() : '';
+            const firstColLower = name.toLowerCase();
+
             // Skip header row
-            if (index === 0 && (name.toLowerCase() === 'nombre' || name.toLowerCase() === 'producto' || name.toLowerCase() === 'name')) {
+            if (firstColLower === 'nombre' || firstColLower === 'producto' || firstColLower === 'name' || firstColLower === 'código' || firstColLower === 'codigo' || firstColLower === 'id') {
               return;
             }
 
-            const category = cols[1] ? cols[1].trim() : 'Ferretería';
-            const unit = cols[2] ? cols[2].trim() : 'Unidades';
-            const stock = parseFloat(cols[3]) || 0;
-            const cost = parseFloat(cols[4]) || 0;
-            const price = parseFloat(cols[5]) || (cost * 1.5);
+            let category = 'Ferretería';
+            let unit = 'Unidades';
+            let stock = 0;
+            let cost = 0;
+            let price = 0;
+
+            const parseNum = (val) => {
+              if (val === null || val === undefined) return 0;
+              const clean = String(val).replace(/[$€\s]/g, '').replace(',', '.');
+              const num = parseFloat(clean);
+              return isNaN(num) ? 0 : num;
+            };
+
+            // Detect if row comes from Exported Inventory (Col 0 is ID, Col 1 is Name)
+            if (cols.length >= 6 && (name.startsWith('prod_') || !isNaN(name))) {
+              name = cols[1] ? cols[1].trim() : name;
+              category = cols[2] ? cols[2].trim() : 'Ferretería';
+              unit = cols[3] ? cols[3].trim() : 'Unidades';
+              stock = parseNum(cols[4]);
+              cost = parseNum(cols[5]);
+              price = parseNum(cols[6]) || (cost * 1.5);
+            } else {
+              // Standard template format: Name, Category, Unit, Stock, Cost, Price
+              category = cols[1] ? cols[1].trim() : 'Ferretería';
+              unit = cols[2] ? cols[2].trim() : 'Unidades';
+              stock = parseNum(cols[3]);
+              cost = parseNum(cols[4]);
+              price = parseNum(cols[5]) || (cost * 1.5);
+            }
+
+            if (!name) return;
 
             // Check if exists
             const existing = state.products.find(p => p.name.toLowerCase() === name.toLowerCase());
@@ -2419,6 +2469,7 @@
     function openProductModal(prodId) {
       const form = document.getElementById('form-product');
       form.reset();
+      const deleteBtn = document.getElementById('btn-delete-product');
       if (prodId) {
         const prod = state.products.find(p => p.id === prodId);
         if (prod) {
@@ -2430,13 +2481,33 @@
           document.getElementById('prod-stock').value = prod.stock;
           document.getElementById('prod-cost').value = prod.costPrice;
           document.getElementById('prod-price').value = prod.sellPrice;
+          if (deleteBtn) deleteBtn.style.display = 'block';
         }
       } else {
         document.getElementById('modal-product-title').innerText = 'Nuevo Producto';
         document.getElementById('prod-id').value = '';
+        if (deleteBtn) deleteBtn.style.display = 'none';
       }
       updateMarginPreview();
       openModal('modal-product');
+    }
+
+    function deleteProductFromModal() {
+      const prodId = document.getElementById('prod-id').value;
+      if (!prodId) return;
+      const prod = state.products.find(p => p.id === prodId);
+      if (!prod) return;
+
+      const confirmDelete = confirm(`¿Deseas eliminar el producto "${prod.name}"?\n\nEsta acción no se puede deshacer y borrará el producto del inventario.`);
+      if (!confirmDelete) return;
+
+      state.products = state.products.filter(p => p.id !== prodId);
+      addMovement(prod.id, prod.name, 'BAJA', -prod.stock, 0, 'Producto eliminado del inventario');
+      saveData();
+      closeModal('modal-product');
+      renderProducts();
+      renderDashboard();
+      alert(`Producto "${prod.name}" eliminado correctamente.`);
     }
 
     function updateMarginPreview() {

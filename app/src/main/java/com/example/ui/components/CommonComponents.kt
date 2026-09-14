@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -174,7 +176,8 @@ fun StockBadge(stock: Double, unidad: String) {
 fun ProductDialog(
     initialProduct: ProductEntity? = null,
     onDismiss: () -> Unit,
-    onSave: (nombre: String, categoria: String, costo: Double, precio: Double, unidad: String, stock: Double) -> Unit
+    onSave: (nombre: String, categoria: String, costo: Double, precio: Double, unidad: String, stock: Double) -> Unit,
+    onDelete: ((ProductEntity) -> Unit)? = null
 ) {
     var nombre by remember { mutableStateOf(initialProduct?.nombre ?: "") }
     var categoria by remember { mutableStateOf(initialProduct?.categoria ?: "Herramientas") }
@@ -186,6 +189,7 @@ fun ProductDialog(
     var catMenuOpen by remember { mutableStateOf(false) }
     var unitMenuOpen by remember { mutableStateOf(false) }
     var errorText by remember { mutableStateOf<String?>(null) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     val categories = listOf("Herramientas", "Pinturas", "Ferretería", "Electricidad", "Plomería", "Otros")
     val units = listOf("unidad", "kg", "litro", "metro", "caja")
@@ -193,10 +197,28 @@ fun ProductDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(
-                text = if (initialProduct == null) "Nuevo Producto" else "Editar Producto",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (initialProduct == null) "Nuevo Producto" else "Editar Producto",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                )
+                if (initialProduct != null && onDelete != null) {
+                    IconButton(
+                        onClick = { showDeleteConfirm = true },
+                        modifier = Modifier.testTag("btn_dialog_delete_product")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Eliminar Producto",
+                            tint = CrimsonDanger
+                        )
+                    }
+                }
+            }
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -311,6 +333,29 @@ fun ProductDialog(
                         modifier = Modifier.weight(1f)
                     )
                 }
+
+                if (initialProduct != null && onDelete != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedButton(
+                        onClick = { showDeleteConfirm = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("btn_delete_product_in_dialog"),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = CrimsonDanger
+                        ),
+                        border = BorderStroke(1.dp, CrimsonDanger.copy(alpha = 0.5f)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Eliminar este producto", fontWeight = FontWeight.SemiBold)
+                    }
+                }
             }
         },
         confirmButton = {
@@ -350,6 +395,45 @@ fun ProductDialog(
             }
         }
     )
+
+    if (showDeleteConfirm && initialProduct != null && onDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = {
+                Text(
+                    text = "¿Eliminar producto?",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                )
+            },
+            text = {
+                Text(
+                    text = "¿Estás seguro de que deseas eliminar el producto \"${initialProduct.nombre}\"? Esta acción no se puede deshacer y borrará el producto del inventario.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteConfirm = false
+                        onDelete(initialProduct)
+                        onDismiss()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = CrimsonDanger),
+                    modifier = Modifier.testTag("btn_confirm_delete_product")
+                ) {
+                    Text("Sí, eliminar", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteConfirm = false },
+                    modifier = Modifier.testTag("btn_cancel_delete_product")
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 }
 
 // --- DIALOG: ADD VENTA ---
