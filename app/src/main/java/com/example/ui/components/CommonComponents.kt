@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -51,6 +53,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -58,6 +61,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -183,7 +190,7 @@ fun StockBadge(stock: Double, unidad: String) {
     }
 }
 
-// --- KEYBOARD AWARE DIALOG WRAPPER ---
+// --- KEYBOARD AWARE & DRAGGABLE DIALOG WRAPPER ---
 @Composable
 fun AppKeyboardAwareDialog(
     onDismissRequest: () -> Unit,
@@ -203,13 +210,16 @@ fun AppKeyboardAwareDialog(
             window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
             onDispose {}
         }
+
+        var dragOffsetY by remember { mutableFloatStateOf(0f) }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .imePadding()
                 .systemBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            contentAlignment = Alignment.Center
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            contentAlignment = Alignment.TopCenter
         ) {
             Surface(
                 shape = RoundedCornerShape(24.dp),
@@ -219,8 +229,47 @@ fun AppKeyboardAwareDialog(
                 modifier = modifier
                     .fillMaxWidth()
                     .wrapContentHeight()
+                    .offset { IntOffset(0, dragOffsetY.roundToInt()) }
             ) {
-                content()
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    // Top drag and slide handle: permits sliding upward with finger or tapping to raise/lower
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .pointerInput(Unit) {
+                                detectVerticalDragGestures { change, dragAmount ->
+                                    change.consume()
+                                    dragOffsetY = (dragOffsetY + dragAmount).coerceIn(-600f, 150f)
+                                }
+                            }
+                            .clickable {
+                                dragOffsetY = if (dragOffsetY < -50f) 0f else -260f
+                            }
+                            .padding(top = 8.dp, bottom = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 44.dp, height = 4.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                        RoundedCornerShape(2.dp)
+                                    )
+                            )
+                            Text(
+                                text = if (dragOffsetY < -50f) "▼ Toca para bajar ventana" else "▲ Desliza o toca para subir ventana",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    content()
+                }
             }
         }
     }

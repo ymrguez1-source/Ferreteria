@@ -578,6 +578,7 @@
       display: none;
       align-items: flex-end;
       justify-content: center;
+      transition: background 0.2s ease;
     }
     .modal-backdrop.open {
       display: flex;
@@ -588,11 +589,72 @@
       width: 100%;
       max-width: 680px;
       border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-      padding: 20px 20px calc(env(safe-area-inset-bottom, 16px) + 20px) 20px;
+      padding: 8px 20px calc(env(safe-area-inset-bottom, 16px) + 20px) 20px;
       max-height: 88vh;
       overflow-y: auto;
       box-shadow: var(--shadow-lg);
       animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.2s ease, border-radius 0.2s ease;
+      position: relative;
+    }
+
+    .modal-sheet.slid-up {
+      transform: translateY(-46vh) !important;
+      border-radius: var(--radius-lg) !important;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.38) !important;
+    }
+
+    @media (max-height: 700px) {
+      .modal-sheet.slid-up {
+        transform: translateY(-54vh) !important;
+      }
+    }
+
+    /* Modal Drag Bar */
+    .modal-drag-bar {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 0 10px 0;
+      cursor: grab;
+      user-select: none;
+      touch-action: pan-y;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      margin-bottom: 12px;
+    }
+    .modal-drag-bar:active {
+      cursor: grabbing;
+    }
+    .modal-drag-pill {
+      width: 48px;
+      height: 5px;
+      background: #D7CCC8;
+      border-radius: 4px;
+      transition: background 0.2s, width 0.2s;
+    }
+    .modal-drag-bar:hover .modal-drag-pill,
+    .modal-drag-bar:active .modal-drag-pill {
+      background: var(--primary);
+      width: 62px;
+    }
+    .modal-drag-hint {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 5px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--primary);
+      padding: 3px 12px;
+      border-radius: 12px;
+      background: #FFF3E0;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .modal-sheet.slid-up .modal-drag-hint {
+      background: #E8F5E9;
+      color: #2E7D32;
     }
 
     @keyframes slideUp {
@@ -3086,20 +3148,130 @@
         applyLicenseGate();
         return;
       }
-      document.getElementById(id).classList.add('open');
+      const modal = document.getElementById(id);
+      if (modal) {
+        modal.classList.add('open');
+        const sheet = modal.querySelector('.modal-sheet');
+        if (sheet) {
+          ensureModalDragBar(sheet);
+        }
+      }
     }
 
     function closeModal(id) {
-      document.getElementById(id).classList.remove('open');
+      const modal = document.getElementById(id);
+      if (!modal) return;
+      modal.classList.remove('open');
+      const sheet = modal.querySelector('.modal-sheet');
+      if (sheet) {
+        setModalSlideState(sheet, false);
+      }
     }
 
     document.querySelectorAll('.modal-backdrop').forEach(modal => {
       modal.addEventListener('click', (e) => {
         if (e.target === modal) {
-          modal.classList.remove('open');
+          closeModal(modal.id);
         }
       });
     });
+
+    /* ==========================================================================
+       MODAL SLIDE-UP & TOUCH DRAG SYSTEM (DESLIZAR HACIA ARRIBA)
+       ========================================================================== */
+    let isDraggingModal = false;
+    let dragSheet = null;
+    let dragStartY = 0;
+    let sheetInitialOffset = 0;
+    let dragCurrentOffset = 0;
+
+    function toggleModalSlide(sheet) {
+      if (!sheet) return;
+      const isUp = sheet.classList.contains('slid-up');
+      setModalSlideState(sheet, !isUp);
+    }
+
+    function setModalSlideState(sheet, slideUp) {
+      if (!sheet) return;
+      sheet.style.transition = 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.2s ease';
+      const label = sheet.querySelector('.slide-label');
+      
+      if (slideUp) {
+        sheet.classList.add('slid-up');
+        sheet.style.transform = '';
+        if (label) label.innerText = '▼ Toca para bajar ventana';
+      } else {
+        sheet.classList.remove('slid-up');
+        sheet.style.transform = '';
+        if (label) label.innerText = '▲ Desliza o toca para subir ventana';
+      }
+    }
+
+    function ensureModalDragBar(sheet) {
+      if (!sheet || sheet.querySelector('.modal-drag-bar')) return;
+      const dragBar = document.createElement('div');
+      dragBar.className = 'modal-drag-bar';
+      dragBar.innerHTML = `
+        <div class="modal-drag-pill"></div>
+        <div class="modal-drag-hint">
+          <span class="slide-label">▲ Desliza o toca para subir ventana</span>
+        </div>
+      `;
+      dragBar.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleModalSlide(sheet);
+      });
+      sheet.insertBefore(dragBar, sheet.firstChild);
+      bindDragEvents(sheet, dragBar);
+    }
+
+    function bindDragEvents(sheet, touchArea) {
+      if (!touchArea) return;
+      touchArea.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          isDraggingModal = true;
+          dragSheet = sheet;
+          dragStartY = e.touches[0].clientY;
+          sheet.style.transition = 'none';
+          sheetInitialOffset = sheet.classList.contains('slid-up') ? -window.innerHeight * 0.46 : 0;
+          dragCurrentOffset = sheetInitialOffset;
+        }
+      }, { passive: true });
+    }
+
+    function initModalSlideGestures() {
+      document.querySelectorAll('.modal-sheet').forEach(sheet => {
+        ensureModalDragBar(sheet);
+        const header = sheet.querySelector('.modal-header');
+        if (header) {
+          bindDragEvents(sheet, header);
+        }
+      });
+
+      window.addEventListener('touchmove', (e) => {
+        if (!isDraggingModal || !dragSheet) return;
+        const currentY = e.touches[0].clientY;
+        const deltaY = currentY - dragStartY;
+        let newOffset = sheetInitialOffset + deltaY;
+        newOffset = Math.min(20, Math.max(-window.innerHeight * 0.65, newOffset));
+        dragSheet.style.transform = `translateY(${newOffset}px)`;
+        dragCurrentOffset = newOffset;
+      }, { passive: true });
+
+      window.addEventListener('touchend', (e) => {
+        if (!isDraggingModal || !dragSheet) return;
+        isDraggingModal = false;
+        dragSheet.style.transition = 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1)';
+        
+        if (dragCurrentOffset < -60) {
+          setModalSlideState(dragSheet, true);
+        } else {
+          setModalSlideState(dragSheet, false);
+        }
+        dragSheet = null;
+      }, { passive: true });
+    }
 
     function escapeHtml(str) {
       if (!str) return '';
@@ -3154,12 +3326,20 @@
       window.visualViewport.addEventListener('scroll', adjustForKeyboard);
     }
 
-    // Scroll active element into center of view so the keyboard never obscures typing
+    // Scroll active element into center of view and slide window up so typing is NEVER obscured
     document.addEventListener('focusin', (e) => {
-      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) {
+      const target = e.target;
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName)) {
+        const openModal = target.closest('.modal-backdrop.open');
+        if (openModal) {
+          const sheet = openModal.querySelector('.modal-sheet');
+          if (sheet && !sheet.classList.contains('slid-up')) {
+            setModalSlideState(sheet, true);
+          }
+        }
         setTimeout(adjustForKeyboard, 100);
         setTimeout(() => {
-          e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 300);
       }
     });
@@ -3218,6 +3398,7 @@
     function initApp() {
       loadData();
       renderDashboard();
+      initModalSlideGestures();
     }
 
     if (window.cordova) {
