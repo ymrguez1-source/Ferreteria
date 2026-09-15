@@ -11,12 +11,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
@@ -196,6 +200,11 @@ fun ProductDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        modifier = Modifier
+            .fillMaxWidth(0.95f)
+            .imePadding()
+            .padding(vertical = 16.dp),
         title = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -221,7 +230,12 @@ fun ProductDialog(
             }
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 if (errorText != null) {
                     Text(
                         text = errorText!!,
@@ -459,11 +473,21 @@ fun AddVentaDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        modifier = Modifier
+            .fillMaxWidth(0.95f)
+            .imePadding()
+            .padding(vertical = 16.dp),
         title = {
             Text("Registrar Venta", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 if (errorText != null) {
                     Text(text = errorText!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
@@ -607,11 +631,21 @@ fun AddMermaDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        modifier = Modifier
+            .fillMaxWidth(0.95f)
+            .imePadding()
+            .padding(vertical = 16.dp),
         title = {
             Text("Registrar Merma / Pérdida", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 if (errorText != null) {
                     Text(text = errorText!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
@@ -757,11 +791,21 @@ fun AdjustStockDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        modifier = Modifier
+            .fillMaxWidth(0.95f)
+            .imePadding()
+            .padding(vertical = 16.dp),
         title = {
             Text("Ajustar Stock", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 Text(
                     text = "${product.nombre} (Actual: ${product.stock} ${product.unidadMedida})",
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)

@@ -5,29 +5,56 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ManageAccounts
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,14 +62,19 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,9 +82,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.ProductEntity
@@ -114,6 +150,19 @@ fun FerreteriaApp(viewModel: FerreteriaViewModel) {
     var showMermaDialog by remember { mutableStateOf(false) }
     var adjustingProduct by remember { mutableStateOf<ProductEntity?>(null) }
 
+    // Screen scale & font zoom states (Pinch-to-zoom)
+    var userScale by remember { mutableFloatStateOf(1.0f) }
+    var showZoomDialog by remember { mutableStateOf(false) }
+    var showZoomToast by remember { mutableStateOf(false) }
+
+    val defaultDensity = LocalDensity.current
+    val scaledDensity = remember(defaultDensity, userScale) {
+        Density(
+            density = defaultDensity.density * (1f + (userScale - 1f) * 0.35f),
+            fontScale = defaultDensity.fontScale * userScale
+        )
+    }
+
     // Display snackbar messages
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let {
@@ -137,60 +186,93 @@ fun FerreteriaApp(viewModel: FerreteriaViewModel) {
         return
     }
 
-    Scaffold(
-        contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "Ferretería",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                            color = Color.White
-                        )
-                        Text(
-                            text = when (selectedScreen) {
-                                0 -> "Panel Principal"
-                                1 -> "Inventario"
-                                2 -> "Ventas"
-                                3 -> "Mermas"
-                                4 -> "Informes"
-                                else -> "Usuarios & Ajustes"
-                            },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.85f)
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = { selectedScreen = 5 },
-                        modifier = Modifier.testTag("btn_top_users")
-                    ) {
-                        BadgedBox(
-                            badge = {
-                                if (currentUser?.role == "administrador") {
-                                    Badge(containerColor = MaterialTheme.colorScheme.tertiary) {
-                                        Text("A", fontSize = 9.sp)
+    CompositionLocalProvider(LocalDensity provides scaledDensity) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        do {
+                            val event = awaitPointerEvent()
+                            if (event.changes.size >= 2) {
+                                val zoom = event.calculateZoom()
+                                if (zoom != 1f) {
+                                    val newScale = (userScale * zoom).coerceIn(0.85f, 2.2f)
+                                    if (kotlin.math.abs(newScale - userScale) > 0.005f) {
+                                        userScale = newScale
+                                        showZoomToast = true
                                     }
+                                    event.changes.forEach { it.consume() }
                                 }
                             }
-                        ) {
-                            Icon(
-                                imageVector = if (selectedScreen == 5) Icons.Default.ManageAccounts else Icons.Default.AccountCircle,
-                                contentDescription = "Perfil y Usuarios",
-                                tint = Color.White
-                            )
-                        }
+                        } while (event.changes.any { it.pressed })
                     }
+                }
+        ) {
+            Scaffold(
+                contentWindowInsets = WindowInsets.safeDrawing,
+                topBar = {
+                    CenterAlignedTopAppBar(
+                        title = {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "Ferretería",
+                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = when (selectedScreen) {
+                                        0 -> "Panel Principal"
+                                        1 -> "Inventario"
+                                        2 -> "Ventas"
+                                        3 -> "Mermas"
+                                        4 -> "Informes"
+                                        else -> "Usuarios & Ajustes"
+                                    },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White.copy(alpha = 0.85f)
+                                )
+                            }
+                        },
+                        actions = {
+                            IconButton(
+                                onClick = { showZoomDialog = true },
+                                modifier = Modifier.testTag("btn_top_zoom")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FormatSize,
+                                    contentDescription = "Tamaño de letra",
+                                    tint = Color.White
+                                )
+                            }
+                            IconButton(
+                                onClick = { selectedScreen = 5 },
+                                modifier = Modifier.testTag("btn_top_users")
+                            ) {
+                                BadgedBox(
+                                    badge = {
+                                        if (currentUser?.role == "administrador") {
+                                            Badge(containerColor = MaterialTheme.colorScheme.tertiary) {
+                                                Text("A", fontSize = 9.sp)
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = if (selectedScreen == 5) Icons.Default.ManageAccounts else Icons.Default.AccountCircle,
+                                        contentDescription = "Perfil y Usuarios",
+                                        tint = Color.White
+                                    )
+                                }
+                            }
+                        },
+                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                            containerColor = TerracottaDark,
+                            titleContentColor = Color.White,
+                            actionIconContentColor = Color.White
+                        )
+                    )
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = TerracottaDark,
-                    titleContentColor = Color.White,
-                    actionIconContentColor = Color.White
-                )
-            )
-        },
         bottomBar = {
             NavigationBar(
                 modifier = Modifier
@@ -452,6 +534,161 @@ fun FerreteriaApp(viewModel: FerreteriaViewModel) {
             }
         )
     }
+
+    // Floating Zoom Indicator Pill
+    AnimatedVisibility(
+        visible = showZoomToast || userScale != 1.0f,
+        enter = fadeIn() + slideInVertically { it },
+        exit = fadeOut() + slideOutVertically { it },
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .padding(bottom = 96.dp)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp),
+            tonalElevation = 6.dp,
+            shadowElevation = 8.dp,
+            border = BorderStroke(1.dp, TerracottaPrimary.copy(alpha = 0.35f)),
+            modifier = Modifier.padding(horizontal = 16.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ZoomIn,
+                    contentDescription = "Zoom",
+                    tint = TerracottaPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "Letra: ${(userScale * 100).toInt()}%",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                IconButton(
+                    onClick = { userScale = (userScale - 0.15f).coerceAtLeast(0.85f) },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(Icons.Default.Remove, contentDescription = "Reducir letra", modifier = Modifier.size(16.dp))
+                }
+                IconButton(
+                    onClick = { userScale = (userScale + 0.15f).coerceAtMost(2.2f) },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Aumentar letra", modifier = Modifier.size(16.dp))
+                }
+                TextButton(
+                    onClick = {
+                        userScale = 1.0f
+                        showZoomToast = false
+                    },
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text("100%", fontSize = 12.sp)
+                }
+            }
+        }
+    }
+
+    // Dialog for Font Size & Zoom Adjustment
+    if (showZoomDialog) {
+        AlertDialog(
+            onDismissRequest = { showZoomDialog = false },
+            icon = { Icon(Icons.Default.FormatSize, contentDescription = null, tint = TerracottaPrimary) },
+            title = {
+                Text(
+                    "Tamaño de Letra y Pantalla",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text(
+                        text = "Ajusta el tamaño para ver más grande las letras y textos en toda la ferretería:",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Escala actual:", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "${(userScale * 100).toInt()}%",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = TerracottaPrimary
+                        )
+                    }
+                    Slider(
+                        value = userScale,
+                        onValueChange = { userScale = it },
+                        valueRange = 0.85f..2.0f,
+                        steps = 7,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(
+                            "100%" to 1.0f,
+                            "125%" to 1.25f,
+                            "150%" to 1.5f,
+                            "180%" to 1.8f
+                        ).forEach { (label, scale) ->
+                            FilterChip(
+                                selected = kotlin.math.abs(userScale - scale) < 0.05f,
+                                onClick = { userScale = scale },
+                                label = { Text(label, fontSize = 11.sp) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text("💡", fontSize = 18.sp)
+                            Text(
+                                text = "¡También puedes pellizcar la pantalla con la yema de dos dedos en cualquier momento para agrandar o achicar las letras directamente!",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showZoomDialog = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary)
+                ) {
+                    Text("Listo")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        userScale = 1.0f
+                        showZoomDialog = false
+                    }
+                ) {
+                    Text("Restablecer")
+                }
+            }
+        )
+    }
+        } // Box
+    } // CompositionLocalProvider
 }
 
 @Composable

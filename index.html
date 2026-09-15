@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.8, maximum-scale=3.5, user-scalable=yes, viewport-fit=cover" />
   <meta name="theme-color" content="#B85D3B" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -739,6 +739,7 @@
         </div>
       </div>
       <div class="header-actions">
+        <button class="icon-btn" onclick="openModal('modal-zoom')" title="Tamaño de letra / Zoom">🔍</button>
         <button class="icon-btn" onclick="openModal('modal-quick-action')" title="Acciones Rápidas">⚡</button>
         <button class="icon-btn" onclick="switchTab('settings')" title="Ajustes">⚙️</button>
       </div>
@@ -1034,6 +1035,44 @@
         <span>Informes</span>
       </button>
     </nav>
+
+    <!-- FLOATING ZOOM PILL -->
+    <div id="zoom-floating-pill" style="display: none; position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.92); color: white; border-radius: 30px; padding: 6px 16px; z-index: 9999; box-shadow: 0 4px 16px rgba(0,0,0,0.25); align-items: center; gap: 10px; font-size: 0.85rem; font-weight: 600; pointer-events: auto;">
+      <span>🔍 Letra: <span id="pill-zoom-text">100%</span></span>
+      <button onclick="setAppZoom(currentZoomLevel - 0.15)" style="background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 50%; width: 26px; height: 26px; font-weight: bold; cursor: pointer;">-</button>
+      <button onclick="setAppZoom(currentZoomLevel + 0.15)" style="background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 50%; width: 26px; height: 26px; font-weight: bold; cursor: pointer;">+</button>
+      <button onclick="setAppZoom(1.0)" style="background: none; border: none; color: #FFAB91; font-size: 0.75rem; text-decoration: underline; cursor: pointer; padding-left: 4px;">100%</button>
+    </div>
+
+    <!-- MODAL: ZOOM Y TAMAÑO DE LETRA -->
+    <div id="modal-zoom" class="modal-backdrop">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h3 class="modal-title">🔍 Tamaño de Letra y Pantalla</h3>
+          <button class="icon-btn" style="color: #333; background: #EEE;" onclick="closeModal('modal-zoom')">✕</button>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--outline); margin-bottom: 16px;">
+          Ajusta el tamaño para leer los textos, productos y precios con mayor facilidad en toda la ferretería:
+        </p>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span style="font-weight: 600; font-size: 0.9rem;">Nivel actual:</span>
+          <span id="zoom-value-label" style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">100%</span>
+        </div>
+        <input type="range" id="zoom-range-slider" min="0.85" max="2.0" step="0.05" value="1.0" style="width: 100%; margin-bottom: 16px;" oninput="onZoomSliderChange(this.value)" />
+        <div class="grid-2" style="margin-bottom: 10px; gap: 8px;">
+          <button class="btn btn-secondary btn-sm" type="button" onclick="setAppZoom(1.0)">Normal (100%)</button>
+          <button class="btn btn-secondary btn-sm" type="button" onclick="setAppZoom(1.25)">Grande (125%)</button>
+        </div>
+        <div class="grid-2" style="margin-bottom: 14px; gap: 8px;">
+          <button class="btn btn-secondary btn-sm" type="button" onclick="setAppZoom(1.5)">Muy Grande (150%)</button>
+          <button class="btn btn-secondary btn-sm" type="button" onclick="setAppZoom(1.8)">Extra Grande (180%)</button>
+        </div>
+        <div style="background: var(--surface-variant); padding: 12px; border-radius: var(--radius); margin-bottom: 16px; font-size: 0.8rem; color: var(--on-surface-variant); line-height: 1.4;">
+          💡 <strong>Consejo táctil:</strong> ¡También puedes <strong>pellizcar la pantalla con la yema de dos dedos</strong> en cualquier momento para agrandar o achicar las letras directamente!
+        </div>
+        <button class="btn btn-primary btn-block" type="button" onclick="closeModal('modal-zoom')">Listo</button>
+      </div>
+    </div>
 
     <!-- MODAL: IMPORTAR DESDE EXCEL -->
     <div id="modal-excel-import" class="modal-backdrop">
@@ -3088,6 +3127,111 @@
       const d = new Date(ts);
       return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
     }
+
+    /* ==========================================================================
+       KEYBOARD AVOIDANCE & AUTO-SCROLL (WINDOW RAISING)
+       ========================================================================== */
+    function adjustForKeyboard() {
+      if (!window.visualViewport) return;
+      const vp = window.visualViewport;
+      const keyboardHeight = Math.max(0, window.innerHeight - vp.height);
+      const openModal = document.querySelector('.modal-backdrop.open');
+      if (openModal) {
+        const sheet = openModal.querySelector('.modal-sheet');
+        if (sheet) {
+          if (keyboardHeight > 60) {
+            sheet.style.maxHeight = `${vp.height - 16}px`;
+            sheet.style.marginBottom = `${keyboardHeight}px`;
+          } else {
+            sheet.style.maxHeight = '88vh';
+            sheet.style.marginBottom = '0px';
+          }
+        }
+      }
+    }
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', adjustForKeyboard);
+      window.visualViewport.addEventListener('scroll', adjustForKeyboard);
+    }
+
+    // Scroll active element into center of view so the keyboard never obscures typing
+    document.addEventListener('focusin', (e) => {
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) {
+        setTimeout(() => {
+          e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 250);
+      }
+    });
+
+    /* ==========================================================================
+       PINCH-TO-ZOOM & FONT MAGNIFIER GESTURE SYSTEM
+       ========================================================================== */
+    let currentZoomLevel = 1.0;
+    let initialPinchDist = null;
+    let initialZoomStart = 1.0;
+    let zoomToastTimeout = null;
+
+    function setAppZoom(zoom) {
+      currentZoomLevel = Math.min(Math.max(zoom, 0.85), 2.2);
+      document.documentElement.style.setProperty('--zoom-level', currentZoomLevel);
+      document.documentElement.style.fontSize = (16 * currentZoomLevel) + 'px';
+
+      const slider = document.getElementById('zoom-range-slider');
+      if (slider) slider.value = currentZoomLevel;
+      const valLabel = document.getElementById('zoom-value-label');
+      if (valLabel) valLabel.textContent = `${Math.round(currentZoomLevel * 100)}%`;
+
+      const pill = document.getElementById('zoom-floating-pill');
+      const pillText = document.getElementById('pill-zoom-text');
+      if (pill && pillText) {
+        pillText.textContent = `${Math.round(currentZoomLevel * 100)}%`;
+        if (Math.abs(currentZoomLevel - 1.0) > 0.02) {
+          pill.style.display = 'flex';
+          clearTimeout(zoomToastTimeout);
+          zoomToastTimeout = setTimeout(() => {
+            if (currentZoomLevel === 1.0) {
+              pill.style.display = 'none';
+            }
+          }, 4000);
+        } else {
+          pill.style.display = 'none';
+        }
+      }
+    }
+
+    function onZoomSliderChange(val) {
+      setAppZoom(parseFloat(val));
+    }
+
+    // Touch gesture for two fingertips pinch-to-zoom
+    window.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        initialPinchDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        initialZoomStart = currentZoomLevel;
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2 && initialPinchDist) {
+        const currentDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const factor = currentDist / initialPinchDist;
+        const targetZoom = initialZoomStart * factor;
+        setAppZoom(targetZoom);
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', (e) => {
+      if (e.touches.length < 2) {
+        initialPinchDist = null;
+      }
+    }, { passive: true });
 
     function initApp() {
       loadData();
