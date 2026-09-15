@@ -20,7 +20,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import android.view.WindowManager
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
@@ -175,6 +183,49 @@ fun StockBadge(stock: Double, unidad: String) {
     }
 }
 
+// --- KEYBOARD AWARE DIALOG WRAPPER ---
+@Composable
+fun AppKeyboardAwareDialog(
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        val view = LocalView.current
+        DisposableEffect(view) {
+            val window = (view.parent as? DialogWindowProvider)?.window
+            window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+            onDispose {}
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding()
+                .systemBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp,
+                shadowElevation = 8.dp,
+                modifier = modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+            ) {
+                content()
+            }
+        }
+    }
+}
+
 // --- DIALOG: ADD/EDIT PRODUCT ---
 @Composable
 fun ProductDialog(
@@ -198,14 +249,16 @@ fun ProductDialog(
     val categories = listOf("Herramientas", "Pinturas", "Ferretería", "Electricidad", "Plomería", "Otros")
     val units = listOf("unidad", "kg", "litro", "metro", "caja")
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
-        modifier = Modifier
-            .fillMaxWidth(0.95f)
-            .imePadding()
-            .padding(vertical = 16.dp),
-        title = {
+    AppKeyboardAwareDialog(
+        onDismissRequest = onDismiss
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Title & optional Delete action
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -228,11 +281,12 @@ fun ProductDialog(
                     }
                 }
             }
-        },
-        text = {
+
+            // Scrollable fields (automatically resizes when keyboard opens)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .weight(1f, fill = false)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -371,44 +425,49 @@ fun ProductDialog(
                     }
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val costo = costoStr.toDoubleOrNull()
-                    val precio = precioStr.toDoubleOrNull()
-                    val stock = stockStr.toDoubleOrNull()
 
-                    if (nombre.isBlank()) {
-                        errorText = "El nombre no puede estar vacío"
-                        return@Button
-                    }
-                    if (costo == null || costo < 0) {
-                        errorText = "Costo unitario inválido"
-                        return@Button
-                    }
-                    if (precio == null || precio < 0) {
-                        errorText = "Precio de venta inválido"
-                        return@Button
-                    }
-                    if (stock == null || stock < 0) {
-                        errorText = "Stock inválido"
-                        return@Button
-                    }
-
-                    onSave(nombre, categoria, costo, precio, unidad, stock)
-                },
-                modifier = Modifier.testTag("btn_save_product")
+            // Action Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(if (initialProduct == null) "Guardar" else "Actualizar")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
+                TextButton(onClick = onDismiss) {
+                    Text("Cancelar")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = {
+                        val costo = costoStr.toDoubleOrNull()
+                        val precio = precioStr.toDoubleOrNull()
+                        val stock = stockStr.toDoubleOrNull()
+
+                        if (nombre.isBlank()) {
+                            errorText = "El nombre no puede estar vacío"
+                            return@Button
+                        }
+                        if (costo == null || costo < 0) {
+                            errorText = "Costo unitario inválido"
+                            return@Button
+                        }
+                        if (precio == null || precio < 0) {
+                            errorText = "Precio de venta inválido"
+                            return@Button
+                        }
+                        if (stock == null || stock < 0) {
+                            errorText = "Stock inválido"
+                            return@Button
+                        }
+
+                        onSave(nombre, categoria, costo, precio, unidad, stock)
+                    },
+                    modifier = Modifier.testTag("btn_save_product")
+                ) {
+                    Text(if (initialProduct == null) "Guardar" else "Actualizar")
+                }
             }
         }
-    )
+    }
 
     if (showDeleteConfirm && initialProduct != null && onDelete != null) {
         AlertDialog(
@@ -471,20 +530,21 @@ fun AddVentaDialog(
     val total = cantidad * precio
     val ganancia = if (selectedProduct != null) total - (cantidad * selectedProduct.costoUnitario) else 0.0
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
-        modifier = Modifier
-            .fillMaxWidth(0.95f)
-            .imePadding()
-            .padding(vertical = 16.dp),
-        title = {
+    AppKeyboardAwareDialog(
+        onDismissRequest = onDismiss
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             Text("Registrar Venta", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
-        },
-        text = {
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .weight(1f, fill = false)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -575,38 +635,42 @@ fun AddVentaDialog(
                     }
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (selectedProduct == null) {
-                        errorText = "Seleccione un producto"
-                        return@Button
-                    }
-                    if (cantidad <= 0) {
-                        errorText = "La cantidad debe ser mayor a 0"
-                        return@Button
-                    }
-                    if (cantidad > selectedProduct.stock) {
-                        errorText = "Stock insuficiente (disponible: ${selectedProduct.stock})"
-                        return@Button
-                    }
-                    if (precio <= 0) {
-                        errorText = "El precio debe ser mayor a 0"
-                        return@Button
-                    }
 
-                    onConfirm(selectedProductId, cantidad, precio, cliente)
-                },
-                modifier = Modifier.testTag("btn_confirm_sale")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Registrar Venta")
+                TextButton(onClick = onDismiss) { Text("Cancelar") }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = {
+                        if (selectedProduct == null) {
+                            errorText = "Seleccione un producto"
+                            return@Button
+                        }
+                        if (cantidad <= 0) {
+                            errorText = "La cantidad debe ser mayor a 0"
+                            return@Button
+                        }
+                        if (cantidad > selectedProduct.stock) {
+                            errorText = "Stock insuficiente (disponible: ${selectedProduct.stock})"
+                            return@Button
+                        }
+                        if (precio <= 0) {
+                            errorText = "El precio debe ser mayor a 0"
+                            return@Button
+                        }
+
+                        onConfirm(selectedProductId, cantidad, precio, cliente)
+                    },
+                    modifier = Modifier.testTag("btn_confirm_sale")
+                ) {
+                    Text("Registrar Venta")
+                }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
         }
-    )
+    }
 }
 
 // --- DIALOG: ADD MERMA ---
@@ -629,20 +693,21 @@ fun AddMermaDialog(
     val cantidad = cantidadStr.toDoubleOrNull() ?: 0.0
     val costoPerdida = if (selectedProduct != null) cantidad * selectedProduct.costoUnitario else 0.0
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
-        modifier = Modifier
-            .fillMaxWidth(0.95f)
-            .imePadding()
-            .padding(vertical = 16.dp),
-        title = {
+    AppKeyboardAwareDialog(
+        onDismissRequest = onDismiss
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             Text("Registrar Merma / Pérdida", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
-        },
-        text = {
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .weight(1f, fill = false)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -745,34 +810,38 @@ fun AddMermaDialog(
                     }
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (selectedProduct == null) {
-                        errorText = "Seleccione un producto"
-                        return@Button
-                    }
-                    if (cantidad <= 0) {
-                        errorText = "Cantidad debe ser mayor a cero"
-                        return@Button
-                    }
-                    if (cantidad > selectedProduct.stock) {
-                        errorText = "Cantidad excede el stock disponible (${selectedProduct.stock})"
-                        return@Button
-                    }
 
-                    onConfirm(selectedProductId, cantidad, razon, costoPerdida)
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = CrimsonDanger)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Registrar Merma")
+                TextButton(onClick = onDismiss) { Text("Cancelar") }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = {
+                        if (selectedProduct == null) {
+                            errorText = "Seleccione un producto"
+                            return@Button
+                        }
+                        if (cantidad <= 0) {
+                            errorText = "Cantidad debe ser mayor a cero"
+                            return@Button
+                        }
+                        if (cantidad > selectedProduct.stock) {
+                            errorText = "Cantidad excede el stock disponible (${selectedProduct.stock})"
+                            return@Button
+                        }
+
+                        onConfirm(selectedProductId, cantidad, razon, costoPerdida)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = CrimsonDanger)
+                ) {
+                    Text("Registrar Merma")
+                }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
         }
-    )
+    }
 }
 
 // --- DIALOG: STOCK ADJUSTMENT ---
@@ -789,20 +858,21 @@ fun AdjustStockDialog(
     val delta = deltaStr.toDoubleOrNull() ?: 0.0
     val newStock = product.stock + delta
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
-        modifier = Modifier
-            .fillMaxWidth(0.95f)
-            .imePadding()
-            .padding(vertical = 16.dp),
-        title = {
+    AppKeyboardAwareDialog(
+        onDismissRequest = onDismiss
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             Text("Ajustar Stock", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
-        },
-        text = {
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .weight(1f, fill = false)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -851,26 +921,30 @@ fun AdjustStockDialog(
                     }
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (delta == 0.0) {
-                        errorText = "Ingrese una cantidad distinta de cero"
-                        return@Button
-                    }
-                    if (newStock < 0) {
-                        errorText = "El nuevo stock no puede ser negativo"
-                        return@Button
-                    }
-                    onConfirm(delta, motivo)
-                }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Aplicar Ajuste")
+                TextButton(onClick = onDismiss) { Text("Cancelar") }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = {
+                        if (delta == 0.0) {
+                            errorText = "Ingrese una cantidad distinta de cero"
+                            return@Button
+                        }
+                        if (newStock < 0) {
+                            errorText = "El nuevo stock no puede ser negativo"
+                            return@Button
+                        }
+                        onConfirm(delta, motivo)
+                    }
+                ) {
+                    Text("Aplicar Ajuste")
+                }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
         }
-    )
+    }
 }

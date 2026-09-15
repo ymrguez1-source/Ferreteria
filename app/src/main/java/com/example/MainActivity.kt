@@ -153,7 +153,6 @@ fun FerreteriaApp(viewModel: FerreteriaViewModel) {
     // Screen scale & font zoom states (Pinch-to-zoom)
     var userScale by remember { mutableFloatStateOf(1.0f) }
     var showZoomDialog by remember { mutableStateOf(false) }
-    var showZoomToast by remember { mutableStateOf(false) }
 
     val defaultDensity = LocalDensity.current
     val scaledDensity = remember(defaultDensity, userScale) {
@@ -200,7 +199,6 @@ fun FerreteriaApp(viewModel: FerreteriaViewModel) {
                                     val newScale = (userScale * zoom).coerceIn(0.85f, 2.2f)
                                     if (kotlin.math.abs(newScale - userScale) > 0.005f) {
                                         userScale = newScale
-                                        showZoomToast = true
                                     }
                                     event.changes.forEach { it.consume() }
                                 }
@@ -533,64 +531,6 @@ fun FerreteriaApp(viewModel: FerreteriaViewModel) {
                 adjustingProduct = null
             }
         )
-    }
-
-    // Floating Zoom Indicator Pill
-    AnimatedVisibility(
-        visible = showZoomToast || userScale != 1.0f,
-        enter = fadeIn() + slideInVertically { it },
-        exit = fadeOut() + slideOutVertically { it },
-        modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .padding(bottom = 96.dp)
-    ) {
-        Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp),
-            tonalElevation = 6.dp,
-            shadowElevation = 8.dp,
-            border = BorderStroke(1.dp, TerracottaPrimary.copy(alpha = 0.35f)),
-            modifier = Modifier.padding(horizontal = 16.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ZoomIn,
-                    contentDescription = "Zoom",
-                    tint = TerracottaPrimary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Text(
-                    text = "Letra: ${(userScale * 100).toInt()}%",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                IconButton(
-                    onClick = { userScale = (userScale - 0.15f).coerceAtLeast(0.85f) },
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(Icons.Default.Remove, contentDescription = "Reducir letra", modifier = Modifier.size(16.dp))
-                }
-                IconButton(
-                    onClick = { userScale = (userScale + 0.15f).coerceAtMost(2.2f) },
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Aumentar letra", modifier = Modifier.size(16.dp))
-                }
-                TextButton(
-                    onClick = {
-                        userScale = 1.0f
-                        showZoomToast = false
-                    },
-                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
-                ) {
-                    Text("100%", fontSize = 12.sp)
-                }
-            }
-        }
     }
 
     // Dialog for Font Size & Zoom Adjustment

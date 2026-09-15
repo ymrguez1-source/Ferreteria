@@ -1036,14 +1036,6 @@
       </button>
     </nav>
 
-    <!-- FLOATING ZOOM PILL -->
-    <div id="zoom-floating-pill" style="display: none; position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.92); color: white; border-radius: 30px; padding: 6px 16px; z-index: 9999; box-shadow: 0 4px 16px rgba(0,0,0,0.25); align-items: center; gap: 10px; font-size: 0.85rem; font-weight: 600; pointer-events: auto;">
-      <span>🔍 Letra: <span id="pill-zoom-text">100%</span></span>
-      <button onclick="setAppZoom(currentZoomLevel - 0.15)" style="background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 50%; width: 26px; height: 26px; font-weight: bold; cursor: pointer;">-</button>
-      <button onclick="setAppZoom(currentZoomLevel + 0.15)" style="background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 50%; width: 26px; height: 26px; font-weight: bold; cursor: pointer;">+</button>
-      <button onclick="setAppZoom(1.0)" style="background: none; border: none; color: #FFAB91; font-size: 0.75rem; text-decoration: underline; cursor: pointer; padding-left: 4px;">100%</button>
-    </div>
-
     <!-- MODAL: ZOOM Y TAMAÑO DE LETRA -->
     <div id="modal-zoom" class="modal-backdrop">
       <div class="modal-sheet">
@@ -3132,21 +3124,28 @@
        KEYBOARD AVOIDANCE & AUTO-SCROLL (WINDOW RAISING)
        ========================================================================== */
     function adjustForKeyboard() {
-      if (!window.visualViewport) return;
-      const vp = window.visualViewport;
-      const keyboardHeight = Math.max(0, window.innerHeight - vp.height);
       const openModal = document.querySelector('.modal-backdrop.open');
-      if (openModal) {
-        const sheet = openModal.querySelector('.modal-sheet');
-        if (sheet) {
-          if (keyboardHeight > 60) {
-            sheet.style.maxHeight = `${vp.height - 16}px`;
-            sheet.style.marginBottom = `${keyboardHeight}px`;
-          } else {
-            sheet.style.maxHeight = '88vh';
-            sheet.style.marginBottom = '0px';
-          }
+      if (!openModal) return;
+      const sheet = openModal.querySelector('.modal-sheet');
+      if (!sheet) return;
+
+      if (window.visualViewport) {
+        const vp = window.visualViewport;
+        const keyboardHeight = Math.max(0, window.innerHeight - vp.height);
+        if (keyboardHeight > 40) {
+          openModal.style.height = `${vp.height}px`;
+          sheet.style.maxHeight = `${vp.height - 20}px`;
+          sheet.style.paddingBottom = '24px';
+        } else {
+          openModal.style.height = '100%';
+          sheet.style.maxHeight = '88vh';
+          sheet.style.paddingBottom = 'calc(env(safe-area-inset-bottom, 16px) + 20px)';
         }
+      }
+
+      const activeEl = document.activeElement;
+      if (activeEl && ['INPUT', 'SELECT', 'TEXTAREA'].includes(activeEl.tagName)) {
+        activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
 
@@ -3158,9 +3157,10 @@
     // Scroll active element into center of view so the keyboard never obscures typing
     document.addEventListener('focusin', (e) => {
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) {
+        setTimeout(adjustForKeyboard, 100);
         setTimeout(() => {
           e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 250);
+        }, 300);
       }
     });
 
@@ -3170,7 +3170,6 @@
     let currentZoomLevel = 1.0;
     let initialPinchDist = null;
     let initialZoomStart = 1.0;
-    let zoomToastTimeout = null;
 
     function setAppZoom(zoom) {
       currentZoomLevel = Math.min(Math.max(zoom, 0.85), 2.2);
@@ -3181,23 +3180,6 @@
       if (slider) slider.value = currentZoomLevel;
       const valLabel = document.getElementById('zoom-value-label');
       if (valLabel) valLabel.textContent = `${Math.round(currentZoomLevel * 100)}%`;
-
-      const pill = document.getElementById('zoom-floating-pill');
-      const pillText = document.getElementById('pill-zoom-text');
-      if (pill && pillText) {
-        pillText.textContent = `${Math.round(currentZoomLevel * 100)}%`;
-        if (Math.abs(currentZoomLevel - 1.0) > 0.02) {
-          pill.style.display = 'flex';
-          clearTimeout(zoomToastTimeout);
-          zoomToastTimeout = setTimeout(() => {
-            if (currentZoomLevel === 1.0) {
-              pill.style.display = 'none';
-            }
-          }, 4000);
-        } else {
-          pill.style.display = 'none';
-        }
-      }
     }
 
     function onZoomSliderChange(val) {
